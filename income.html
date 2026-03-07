@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#075E54"/>
+<title>Income Astrologer</title>
+<style>
+  :root{
+    --wa:#075E54; --btn1:#25D366; --btn2:#128C7E;
+    --bg:#e5ddd5; --card:#ffffff; --muted:#667781;
+    --dark:#0b1020; --cyan:#22c7f4; --gold:#f6b21a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);}
+  .header{
+    position:fixed;top:0;left:0;right:0;z-index:9;
+    background:var(--wa);color:#fff;padding:18px 18px;
+    font-weight:900;font-size:22px;letter-spacing:.2px;
+  }
+  .wrap{padding-top:88px;max-width:980px;margin:0 auto;min-height:100vh;}
+
+  .bubble{margin:14px 14px 10px;padding:14px 16px;background:var(--card);border-radius:18px;font-size:16px;line-height:1.35;}
+  .card{margin:14px;padding:14px 16px;background:#fff;border-radius:18px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:12px 14px 18px;}
+  .btn{border:none;cursor:pointer;padding:14px 18px;border-radius:999px;font-weight:900;font-size:16px;color:#fff;background:linear-gradient(90deg,var(--btn1),var(--btn2));}
+  input{width:100%;padding:12px 12px;border-radius:14px;border:1px solid #d1d7db;background:#fff;font:inherit}
+  .muted{color:var(--muted);font-size:13.5px;line-height:1.35}
+
+  /* Bigger overall card */
+  .chartCard{
+    background:var(--dark);
+    color:#e6eef7;
+    border-radius:22px;
+    overflow:hidden;
+    margin:10px 8px;
+    padding:18px 14px 20px;
+  }
+
+  .chartTitle{font-weight:900;text-align:center;font-size:24px;margin:6px 0 6px;}
+  .chartSub{font-weight:900;text-align:center;font-size:18px;opacity:.92;margin:0 0 10px;}
+  .legend{display:flex;justify-content:center;gap:18px;font-weight:800;opacity:.95;margin-bottom:10px;flex-wrap:wrap;font-size:16px}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  .dot.cyan{background:var(--cyan)}
+  .dot.gold{background:var(--gold)}
+
+  /* ✅ Chart area big, but fits without forcing extra scroll */
+  #svgWrap{width:100%; margin-top:6px;}
+  #svgWrap svg{
+    width:100%;
+    height:44vh;          /* ✅ reduced from 56vh so card fits */
+    min-height:300px;
+    max-height:520px;
+    display:block;
+  }
+
+  #actionRow .btn{ padding:16px 22px; font-size:18px; }
+
+  .table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14.5px}
+  .table th,.table td{padding:12px 8px;border-top:1px solid rgba(255,255,255,.12);text-align:center}
+  .table th{opacity:.92;font-weight:900}
+  .pill{display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.10);font-weight:900}
+
+  @media (min-width: 860px){
+    .chartCard{ margin:14px auto; max-width:920px; }
+    #svgWrap svg{ height:520px; max-height:none; }
+  }
+
+  @media print{ .actions{ display:none !important; } }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+  <div class="header">Income Astrologer</div>
+  <div class="wrap" id="app"></div>
+
+<script>
+(function(){
+  const app = document.getElementById('app');
+
+  function bubble(html){
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.innerHTML = html;
+    app.appendChild(b);
+    window.scrollTo(0, document.body.scrollHeight);
+    return b;
+  }
+
+  function inputQ(q, placeholder, type, onDone){
+    bubble(q);
+    const c = document.createElement('div');
+    c.className='card';
+    const inp = document.createElement('input');
+    inp.type = type || 'number';
+    inp.placeholder = placeholder || '';
+    if(type !== 'text') inp.inputMode = 'numeric';
+    c.appendChild(inp);
+    const r = document.createElement('div'); r.className='row';
+    const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Continue'; btn.disabled=true;
+    r.appendChild(btn);
+    c.appendChild(r);
+    app.appendChild(c);
+    const valid = ()=>{
+      const v = inp.value.trim();
+      if(type === 'text'){
+        btn.disabled = (v === '');
+      } else {
+        btn.disabled = (v === '' || isNaN(Number(v)));
+      }
+    };
+    inp.addEventListener('input', valid);
+    inp.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !btn.disabled){ btn.click(); }
+    });
+    btn.onclick = ()=>{
+      const v = inp.value.trim();
+      if(type === 'text') onDone(v);
+      else onDone(Number(v));
+    };
+    inp.focus();
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  // --- Model ---
+  const CONV = 0.30;
+  const INCOME_PER_SALE_LPA = 0.19;
+  const MULT = [1.00, 1.50, 2.25, 2.75, 3.50];
+  const HIGH_MULT = 1.50;
+
+  // Fixed cap (labels never change)
+  const Y_MAX_LPA = 126;
+
+  function roundLpa(x){ return Math.round(x); }
+
+  function estimate(leadsY1, meetingRatePct){
+    const mr = Math.max(0, Math.min(100, meetingRatePct)) / 100;
+    const salesY1 = leadsY1 * mr * CONV;
+    const base = salesY1 * INCOME_PER_SALE_LPA;
+    const annual = MULT.map(m=>roundLpa(base*m));
+    const high = annual.map(v=>roundLpa(v*HIGH_MULT));
+    return {annual, high};
+  }
+
+  function renderChart(annual, high, advisorName){
+    const card = document.createElement('div');
+    card.className = 'chartCard';
+    card.innerHTML = `
+      <div id="exportArea" class="exportArea">
+        <div class="chartTitle">Income Astrologer</div>
+        <div class="chartSub" id="chartSub"></div>
+        <div class="legend">
+          <span><span class="dot cyan"></span>Annual Income</span>
+          <span><span class="dot gold"></span>High Performer</span>
+        </div>
+        <div id="svgWrap"></div>
+      </div>
+
+      <div id="actionRow" class="row" style="margin-top:16px;margin-bottom:6px;">
+        <button class="btn" id="btnDownload">Download</button>
+        <button class="btn" id="btnShare">Share</button>
+      </div>
+    `;
+    app.appendChild(card);
+
+    const sub = card.querySelector('#chartSub');
+    if(sub){
+      const safeName = (advisorName||'').trim();
+      sub.textContent = safeName ? `${safeName} Ji's Income Potential` : ``;
+    }
+
+    // Bigger SVG canvas
+    const W = 980;
+    const H = 620;
+    const padL=86, padR=40, padT=52, padB=112;
+
+    // ✅ FIXED range, and NO negative space
+    const minV = 0;
+    const maxV = Y_MAX_LPA;
+
+    const x = (i)=> padL + (W-padL-padR) * (i/4);
+    const y = (v)=>{
+      const clamped = Math.max(minV, Math.min(maxV, v));
+      return padT + (H-padT-padB) * (1 - (clamped - minV)/(maxV - minV));
+    };
+    const points = (arr)=> arr.map((v,i)=> `${x(i)},${y(v)}`).join(' ');
+
+    function starPath(cx, cy, r1, r2){
+      const rays = 8;
+      let d = '';
+      for(let k=0;k<rays*2;k++){
+        const ang = (Math.PI * k)/rays;
+        const r = (k%2===0)?r2:r1;
+        const px = cx + Math.cos(ang)*r;
+        const py = cy + Math.sin(ang)*r;
+        d += (k===0?`M ${px} ${py}`:` L ${px} ${py}`);
+      }
+      return d + ' Z';
+    }
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('preserveAspectRatio','none');
+
+    const bg = document.createElementNS(svg.namespaceURI,'rect');
+    bg.setAttribute('x','0'); bg.setAttribute('y','0');
+    bg.setAttribute('width',W); bg.setAttribute('height',H);
+    bg.setAttribute('fill','#0b1020');
+    svg.appendChild(bg);
+
+    for(let i=0;i<90;i++){
+      const c = document.createElementNS(svg.namespaceURI,'circle');
+      c.setAttribute('cx', Math.random()*W);
+      c.setAttribute('cy', Math.random()*H);
+      c.setAttribute('r', (Math.random()*1.6)+0.3);
+      c.setAttribute('fill', 'rgba(255,255,255,'+(Math.random()*0.35+0.05)+')');
+      svg.appendChild(c);
+    }
+
+    const ticks = [0, 20, 40, 60, 80, 100, 126];
+    ticks.forEach((v, idx)=>{
+      const yy = y(v);
+      const gl = document.createElementNS(svg.namespaceURI,'line');
+      gl.setAttribute('x1', padL);
+      gl.setAttribute('x2', W-padR);
+      gl.setAttribute('y1', yy);
+      gl.setAttribute('y2', yy);
+      gl.setAttribute('stroke', idx===0 ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.14)');
+      gl.setAttribute('stroke-width', idx===0 ? '2' : '1');
+      svg.appendChild(gl);
+
+      const tl = document.createElementNS(svg.namespaceURI,'text');
+      tl.setAttribute('x', padL-16);
+      tl.setAttribute('y', yy+6);
+      tl.setAttribute('text-anchor','end');
+      tl.setAttribute('fill','rgba(255,255,255,.70)');
+      tl.setAttribute('font-size','16');
+      tl.setAttribute('font-weight','900');
+      tl.textContent = `${v}`;
+      svg.appendChild(tl);
+    });
+
+    /* ✅ Baseline exactly at 0L (removes empty block below) */
+    const baseLine = document.createElementNS(svg.namespaceURI,'line');
+    baseLine.setAttribute('x1', padL);
+    baseLine.setAttribute('x2', W-padR);
+    const y0 = y(0);
+    baseLine.setAttribute('y1', y0);
+    baseLine.setAttribute('y2', y0);
+    baseLine.setAttribute('stroke', 'rgba(255,255,255,.22)');
+    baseLine.setAttribute('stroke-width','2');
+    svg.appendChild(baseLine);
+
+    for(let i=0;i<5;i++){
+      const t = document.createElementNS(svg.namespaceURI,'text');
+      t.setAttribute('x', x(i));
+      t.setAttribute('y', H-34);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('fill','rgba(255,255,255,.75)');
+      t.setAttribute('font-size','18');
+      t.setAttribute('font-weight','900');
+      t.textContent = `Year ${i+1}`;
+      svg.appendChild(t);
+    }
+
+    const line1 = document.createElementNS(svg.namespaceURI,'polyline');
+    line1.setAttribute('points', points(annual));
+    line1.setAttribute('fill','none');
+    line1.setAttribute('stroke','var(--cyan)');
+    line1.setAttribute('stroke-width','6');
+    line1.setAttribute('stroke-linecap','round');
+    line1.setAttribute('stroke-linejoin','round');
+    svg.appendChild(line1);
+
+    const line2 = document.createElementNS(svg.namespaceURI,'polyline');
+    line2.setAttribute('points', points(high));
+    line2.setAttribute('fill','none');
+    line2.setAttribute('stroke','var(--gold)');
+    line2.setAttribute('stroke-width','6');
+    line2.setAttribute('stroke-linecap','round');
+    line2.setAttribute('stroke-linejoin','round');
+    svg.appendChild(line2);
+
+    function addSeries(arr, color, labelAbove){
+      arr.forEach((v,i)=>{
+        const cx=x(i), cy=y(v);
+
+        const star = document.createElementNS(svg.namespaceURI,'path');
+        star.setAttribute('d', starPath(cx, cy, 9, 18));
+        star.setAttribute('fill', 'rgba(255,255,255,.92)');
+        star.setAttribute('stroke', color);
+        star.setAttribute('stroke-width','3');
+        svg.appendChild(star);
+
+        const txt = document.createElementNS(svg.namespaceURI,'text');
+        txt.setAttribute('x', cx);
+        txt.setAttribute('y', cy + (labelAbove?-26:42));
+        txt.setAttribute('text-anchor','middle');
+        txt.setAttribute('fill', color);
+        txt.setAttribute('font-size','20');
+        txt.setAttribute('font-weight','900');
+        txt.textContent = `₹${v}L`;
+        svg.appendChild(txt);
+      });
+    }
+    addSeries(annual, 'var(--cyan)', false);
+    addSeries(high, 'var(--gold)', true);
+
+    card.querySelector('#svgWrap').appendChild(svg);
+
+    function nextPngFileName(){
+      const safeName = (advisorName||'Advisor').trim() || 'Advisor';
+      const key = 'ia_png_count_' + safeName.toLowerCase();
+      const n = (parseInt(localStorage.getItem(key)||'0',10) || 0) + 1;
+      localStorage.setItem(key, String(n));
+      const suffix = String(n).padStart(2,'0');
+      return `${safeName} Ji ${suffix}.png`;
+    }
+
+    async function downloadPng(){
+      const area = document.getElementById('exportArea');
+      if(!area){ alert('Nothing to export yet.'); return; }
+      if(!window.html2canvas){
+        alert('Export library failed to load. Please check internet connection once.');
+        return;
+      }
+      const canvas = await html2canvas(area, {backgroundColor: '#0b1020', scale: 3, useCORS: true});
+
+      if(__inApp()){
+        await __downloadCanvasViaApp(canvas, nextPngFileName());
+        return;
+      }
+
+      const blob = await new Promise(res=>canvas.toBlob(res, 'image/png', 1.0));
+      if(!blob){ alert('Could not generate image.'); return; }
+
+      const fileName = nextPngFileName();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+    }
+
+    async function sharePng(){
+      const area = document.getElementById('exportArea');
+      if(!area){ alert('Nothing to share yet.'); return; }
+      if(!window.html2canvas){
+        alert('Export library failed to load. Please check internet connection once.');
+        return;
+      }
+      const canvas = await html2canvas(area, {backgroundColor: '#0b1020', scale: 3, useCORS: true});
+
+      if(__inApp()){
+        await __shareCanvasViaApp(canvas, nextPngFileName());
+        return;
+      }
+
+      const blob = await new Promise(res=>canvas.toBlob(res, 'image/png', 1.0));
+      if(!blob){ alert('Could not generate image.'); return; }
+
+      const fileName = nextPngFileName();
+
+      if(navigator.share && navigator.canShare){
+        try{
+          const file = new File([blob], fileName, {type:'image/png'});
+          if(navigator.canShare({files:[file]})){
+            await navigator.share({files:[file], title:fileName, text:'Income Astrologer result'});
+            return;
+          }
+        }catch(e){}
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+      alert('Sharing is not supported on this browser. I downloaded the PNG instead.');
+    }
+
+    const bd = card.querySelector('#btnDownload');
+    const bs = card.querySelector('#btnShare');
+    if(bd) bd.onclick = ()=>downloadPng();
+    if(bs) bs.onclick = ()=>sharePng();
+
+    const tbl = document.createElement('table');
+    tbl.className='table';
+    tbl.innerHTML = `
+      <thead>
+        <tr>
+          <th></th>
+          <th><span class="pill">Y1</span></th>
+          <th><span class="pill">Y2</span></th>
+          <th><span class="pill">Y3</span></th>
+          <th><span class="pill">Y4</span></th>
+          <th><span class="pill">Y5</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th style="text-align:left;opacity:.95">High Perf.</th>
+          ${high.map(v=>`<td>₹${v}L</td>`).join('')}
+        </tr>
+        <tr>
+          <th style="text-align:left;opacity:.95">Annual</th>
+          ${annual.map(v=>`<td>₹${v}L</td>`).join('')}
+        </tr>
+      </tbody>
+    `;
+    card.appendChild(tbl);
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  bubble("<b>Let’s Analyze Your Income Potential!!</b><br><span class='muted'>Answer 2 quick questions to see your 5-year earning trajectory.</span>");
+  const start = document.createElement('div');
+  start.className='row';
+  start.innerHTML = '<button class="btn" id="go">Yes Let’s Begin!!</button>';
+  app.appendChild(start);
+
+  window.scrollTo(0,0);
+
+  document.getElementById('go').onclick = ()=>{
+    inputQ("1) Name of the Advisor?", "e.g., Ramesh", "text", name=>{
+      const advisorName = String(name||'').trim();
+      inputQ("2) Starting Leads in the 1st Year?", "e.g., 100", "number", leads=>{
+        inputQ("3) Meeting Rate (%) — out of 100 leads, how many will you meet?", "e.g., 70", "number", mr=>{
+          bubble("<span class='muted'>Calculating your 5-year forecast…</span>");
+          const {annual, high} = estimate(leads, mr);
+          renderChart(annual, high, advisorName);
+        });
+      });
+    });
+  };
+
+})();
+</script>
+
+<script>
+function __inApp(){
+  return !!(window.Android &&
+            (typeof Android.downloadBase64Png === 'function' || typeof Android.shareBase64Png === 'function'));
+}
+async function __canvasToPngDataUrl(canvas){
+  return canvas.toDataURL('image/png');
+}
+async function __shareCanvasViaApp(canvas, filename){
+  const dataUrl = await __canvasToPngDataUrl(canvas);
+  if(window.Android && typeof Android.shareBase64Png === 'function'){
+    Android.shareBase64Png(dataUrl, filename || 'income-astrologer-output.png');
+  }
+}
+async function __downloadCanvasViaApp(canvas, filename){
+  const dataUrl = await __canvasToPngDataUrl(canvas);
+  if(window.Android && typeof Android.downloadBase64Png === 'function'){
+    Android.downloadBase64Png(dataUrl, filename || 'income-astrologer-output.png');
+  } else if(window.Android && typeof Android.savePngBase64 === 'function'){
+    const b64 = dataUrl.split(',')[1] || '';
+    Android.savePngBase64(filename || 'income-astrologer-output.png', b64);
+  }
+}
+</script>
+
+</body>
+</html>
+

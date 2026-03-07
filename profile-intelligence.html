@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Profile Intelligence</title>
+
+<style>
+:root{
+  --wa:#075E54;
+  --bg:#e5ddd5;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --btn1:#22c55e;
+  --btn2:#0ea5a0;
+  --danger:#ef4444;
+
+  --pillBg:#e9e7f6;
+  --pillStroke:#c9c5ea;
+
+  --acc1:#efe9db;
+  --acc2:#cfe8ea;
+  --acc3:#e6def2;
+}
+body.dark{
+  --bg:#0b1220;
+  --card:#0f1a2c;
+  --text:#f8fafc;
+  --muted:#94a3b8;
+
+  --pillBg:#1b2540;
+  --pillStroke:#2a3966;
+  --acc1:#172036;
+  --acc2:#142d2f;
+  --acc3:#1a2340;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+header{
+  background:var(--wa);
+  color:#fff;
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+header h1{margin:0;font-size:34px;line-height:1.05;}
+.toggle{
+  border:2px solid rgba(255,255,255,.75);
+  background:transparent;
+  color:#fff;
+  border-radius:999px;
+  padding:8px 18px;
+  font-weight:900;
+  cursor:pointer;
+}
+main{
+  max-width:900px;
+  margin:22px auto;
+  padding:0 16px calc(40px + env(safe-area-inset-bottom));
+}
+.card{
+  background:var(--card);
+  border-radius:22px;
+  padding:26px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);
+}
+h2{margin:0 0 8px;}
+p{margin:0}
+.ctaRow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:14px;}
+.cta{
+  border:none;
+  border-radius:999px;
+  padding:16px 34px;
+  font-size:20px;
+  font-weight:1000;
+  color:#fff;
+  background:linear-gradient(90deg,var(--btn1),var(--btn2));
+  cursor:pointer;
+  width:min(360px, 100%);
+  transition:transform .08s ease, filter .15s ease;
+}
+.cta:active{transform:scale(.98);filter:brightness(.95)}
+.btnDanger{background:var(--danger);}
+
+.small{
+  font-size:14px;
+  color:var(--muted);
+  font-weight:800;
+  margin-top:10px;
+  text-align:center
+}
+.status{
+  margin-top:12px;
+  text-align:center;
+  font-weight:900;
+  color:var(--muted);
+}
+.hidden{display:none !important;}
+.hr{height:1px;background:rgba(100,116,139,.25);margin:14px 0;border-radius:999px;}
+
+.fileBox{
+  margin-top:14px;
+  display:grid;
+  gap:10px;
+}
+.fileMeta{
+  text-align:center;
+  color:var(--muted);
+  font-weight:900;
+}
+.note{
+  margin-top:10px;
+  font-size:13px;
+  color:var(--muted);
+  font-weight:800;
+  text-align:center;
+}
+
+/* ===== Accordion UI exactly like your screenshot ===== */
+.accWrap{
+  margin-top:16px;
+  display:grid;
+  gap:14px;
+}
+
+.accItem{
+  border-radius:28px;
+  border:2px solid rgba(100,116,139,.22);
+  overflow:hidden;
+  background:var(--pillBg);
+  box-shadow:0 10px 22px rgba(0,0,0,.08);
+}
+
+/* header pill */
+.accBtn{
+  width:100%;
+  text-align:left;
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  padding:14px 14px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.accIcon{
+  width:52px;height:52px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:1000;
+  border:2px solid rgba(100,116,139,.25);
+  background:rgba(255,255,255,.65);
+  color:var(--text);
+  flex:0 0 auto;
+  font-size:26px;
+}
+body.dark .accIcon{background:rgba(0,0,0,.25);}
+
+.accTitle{
+  font-size:22px;
+  font-weight:1000;
+  line-height:1.05;
+}
+
+/* body area */
+.accBody{
+  padding:0 16px 18px 16px;
+}
+.accBody.hidden{display:none !important;}
+
+.accBodyCard{
+  margin-top:10px;
+  border-radius:22px;
+  padding:18px 18px;
+  background:linear-gradient(135deg, rgba(2,6,23,.92), rgba(15,23,42,.92));
+  color:#f8fafc;
+  box-shadow:0 16px 30px rgba(0,0,0,.22);
+}
+.accBodyCard .cardTitle{
+  font-size:20px;
+  font-weight:1000;
+  margin-bottom:10px;
+}
+.accBodyCard .cardText{
+  opacity:.95;
+  font-weight:750;
+  font-size:16px;
+  line-height:1.55;
+}
+
+/* per-row pastel pill colors like screenshot */
+.accItem[data-c="1"]{background:var(--acc3);}
+.accItem[data-c="2"]{background:var(--acc1);}
+.accItem[data-c="3"]{background:var(--acc2);}
+.accItem[data-c="4"]{background:var(--acc3);}
+.accItem[data-c="5"]{background:var(--acc1);}
+.accItem[data-c="6"]{background:var(--acc2);}
+.accItem[data-c="7"]{background:var(--acc3);}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>Profile<br>Intelligence</h1>
+  <button class="toggle" id="toggleBtn" type="button">Dark</button>
+</header>
+
+<main>
+
+<!-- Screen 1 -->
+<section class="card" id="screen1">
+  <h2>Visit the client’s LinkedIn profile</h2>
+  <p style="color:var(--muted);font-weight:800;line-height:1.35">
+    Tap <b>Let’s Go!!</b> to open LinkedIn. Then take 1–2 screenshots of the profile and upload them here.
+  </p>
+
+  <div class="ctaRow">
+    <button class="cta" id="goBtn" type="button">Let’s Go!!</button>
+
+    <!-- SAME LOOK as Let’s Go -->
+    <button class="cta" id="uploadBtn" type="button">Upload Screenshot</button>
+    <input id="fileInput" class="hidden" type="file" accept="image/*" multiple />
+  </div>
+
+  <div class="fileBox">
+    <div class="fileMeta" id="fileMeta">No screenshots selected</div>
+    <div class="note">Tip: In gallery choose the <b>Screenshots</b> album.</div>
+  </div>
+</section>
+
+<!-- Screen 2 -->
+<section class="card hidden" id="screen2">
+  <div class="ctaRow">
+    <button class="cta" id="insightsBtn" type="button">Get Insights</button>
+    <button class="cta btnDanger" id="resetBtn" type="button">Reset</button>
+  </div>
+
+  <div class="status" id="status">Ready.</div>
+  <div class="small" id="debugHint"></div>
+
+  <div class="hr"></div>
+
+  <div class="accWrap" id="accWrap"></div>
+</section>
+
+</main>
+
+<script>
+(function(){
+  // ✅ Your worker URL
+  const WORKER_URL  = "https://dry-fire-c28e.davidtudu1999.workers.dev";
+  const WORKER_PATH = "/insights"; // worker supports "/" or "/insights" — keep "/insights"
+
+  const DEFAULT_TITLES = [
+    "Impressive Career Progression",
+    "Strong Educational Background",
+    "Diverse Skill Set",
+    "Leadership Potential",
+    "Industry Expertise",
+    "Professional Strengths",
+    "Good Conversation Starters"
+  ];
+
+  // Theme
+  const body = document.body;
+  const toggleBtn = document.getElementById('toggleBtn');
+  function applyTheme(t){
+    body.classList.toggle('dark', t==='dark');
+    localStorage.setItem('theme',t);
+    toggleBtn.textContent = t==='dark'?'Light':'Dark';
+  }
+  applyTheme(localStorage.getItem('theme')||'light');
+  toggleBtn.onclick=()=>applyTheme(body.classList.contains('dark')?'light':'dark');
+
+  // DOM
+  const screen1 = document.getElementById('screen1');
+  const screen2 = document.getElementById('screen2');
+  const goBtn = document.getElementById('goBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+  const fileMeta = document.getElementById('fileMeta');
+  const statusEl = document.getElementById('status');
+  const debugHint = document.getElementById('debugHint');
+  const accWrap = document.getElementById('accWrap');
+  const insightsBtn = document.getElementById('insightsBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  function showScreen(n){
+    if(n===1){ screen1.classList.remove('hidden'); screen2.classList.add('hidden'); }
+    else{ screen1.classList.add('hidden'); screen2.classList.remove('hidden'); }
+  }
+  function setStatus(msg){ statusEl.textContent = msg; }
+
+  // State
+  let selectedFiles = [];
+
+  function setFileMeta(){
+    if(!selectedFiles.length){
+      fileMeta.textContent = "No screenshots selected";
+      return;
+    }
+    const names = selectedFiles.map(f=>f.name).slice(0,2).join(", ");
+    const more = selectedFiles.length > 2 ? ` +${selectedFiles.length-2} more` : "";
+    fileMeta.textContent = `${selectedFiles.length} file(s): ${names}${more}`;
+  }
+
+  // Actions
+  goBtn.onclick = () => window.open("https://www.linkedin.com/", "_blank");
+  uploadBtn.onclick = () => fileInput.click();
+
+  fileInput.addEventListener('change', () => {
+    selectedFiles = Array.from(fileInput.files || []);
+    setFileMeta();
+    if(selectedFiles.length){
+      showScreen(2);
+      setStatus("Screenshots selected. Tap “Get Insights”.");
+      debugHint.textContent = "";
+      accWrap.innerHTML = "";
+    }else{
+      showScreen(1);
+    }
+  });
+
+  // ✅ Compress images (your exact function)
+  async function compressImage(file, maxW = 1280, quality = 0.75) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, maxW / bmp.width);
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bmp, 0, 0, w, h);
+
+    const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+  }
+
+  // Normalize to 7 (supports your worker response)
+  function normalizeToSeven(data){
+    let pts = data?.points ?? data?.insights ?? data?.result ?? data?.output ?? data;
+
+    if(typeof pts === "string"){
+      const lines = pts.split("\n").map(s=>s.trim()).filter(Boolean);
+      return lines.slice(0,7).map((line, idx) => ({
+        title: DEFAULT_TITLES[idx] || `Insight ${idx+1}`,
+        body: line
+      }));
+    }
+
+    if(Array.isArray(pts) && pts.length && typeof pts[0] === "string"){
+      return pts.slice(0,7).map((t, idx) => ({
+        title: DEFAULT_TITLES[idx] || `Insight ${idx+1}`,
+        body: t
+      }));
+    }
+
+    if(Array.isArray(pts)){
+      return pts.slice(0,7).map((obj, idx) => ({
+        title: obj?.title || DEFAULT_TITLES[idx] || `Insight ${idx+1}`,
+        body: obj?.body || obj?.text || obj?.detail || JSON.stringify(obj)
+      }));
+    }
+
+    if(pts && typeof pts === "object"){
+      const entries = Object.entries(pts).slice(0,7);
+      if(entries.length){
+        return entries.map(([k,v]) => ({
+          title: String(k),
+          body: (typeof v === "string") ? v : JSON.stringify(v)
+        }));
+      }
+    }
+
+    return DEFAULT_TITLES.map((t)=>({title:t, body:"No data returned."})).slice(0,7);
+  }
+
+  // Accordion render
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;");
+  }
+
+  function renderAccordion(items){
+    accWrap.innerHTML = "";
+
+    items.slice(0,7).forEach((it, idx) => {
+      const item = document.createElement("div");
+      item.className = "accItem";
+      item.setAttribute("data-c", String((idx%3)+1));
+
+      const btn = document.createElement("button");
+      btn.className = "accBtn";
+      btn.type = "button";
+
+      const icon = document.createElement("div");
+      icon.className = "accIcon";
+      icon.textContent = "+";
+
+      const title = document.createElement("div");
+      title.className = "accTitle";
+      title.textContent = it.title || `Insight ${idx+1}`;
+
+      btn.appendChild(icon);
+      btn.appendChild(title);
+
+      const body = document.createElement("div");
+      body.className = "accBody hidden";
+      body.innerHTML = `
+        <div class="accBodyCard">
+          <div class="cardTitle">${escapeHtml(it.title || "")}</div>
+          <div class="cardText">${escapeHtml(it.body || "").replace(/\n/g,"<br>")}</div>
+        </div>
+      `;
+
+      btn.addEventListener("click", () => {
+        Array.from(accWrap.querySelectorAll(".accBody")).forEach(b => b.classList.add("hidden"));
+        Array.from(accWrap.querySelectorAll(".accIcon")).forEach(ic => ic.textContent = "+");
+
+        const isHidden = body.classList.contains("hidden");
+        if(isHidden){
+          body.classList.remove("hidden");
+          icon.textContent = "–";
+        }
+      });
+
+      item.appendChild(btn);
+      item.appendChild(body);
+      accWrap.appendChild(item);
+    });
+  }
+
+  // ✅ Get Insights = compress + upload images only
+  insightsBtn.onclick = async () => {
+    if(!selectedFiles.length){
+      showScreen(1);
+      return;
+    }
+
+    try{
+      accWrap.innerHTML = "";
+      debugHint.textContent = "";
+
+      setStatus("Preparing images…");
+
+      const fd = new FormData();
+      for (const f of selectedFiles) {
+        const cf = await compressImage(f);               // ✅ compress
+        fd.append("images", cf, cf.name);
+      }
+
+      setStatus("Uploading screenshots…");
+
+      const url = WORKER_URL + WORKER_PATH;
+      const res = await fetch(url, {
+        method: "POST",
+        body: fd,
+        mode: "cors",
+        credentials: "omit",
+      });
+
+      const raw = await res.text();
+      if(!res.ok){
+        throw new Error(raw.slice(0, 300));
+      }
+
+      let data;
+      try { data = JSON.parse(raw); }
+      catch { throw new Error("Worker returned non-JSON: " + raw.slice(0, 200)); }
+
+      const items = normalizeToSeven(data);
+      renderAccordion(items);
+      setStatus("Ready");
+
+    }catch(e){
+      setStatus("Error: " + (e?.message || e));
+    }
+  };
+
+  resetBtn.onclick = () => {
+    selectedFiles = [];
+    fileInput.value = "";
+    setFileMeta();
+    accWrap.innerHTML = "";
+    debugHint.textContent = "";
+    showScreen(1);
+    setStatus("Ready.");
+  };
+
+  // Boot
+  setFileMeta();
+  showScreen(1);
+})();
+</script>
+
+</body>
+</html>

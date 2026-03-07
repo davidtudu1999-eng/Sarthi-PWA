@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>Icebreaking Assistance (v10)</title>
+  <style>
+    /* THEME PALETTES ------------------------------------------- */
+    /* WhatsApp-like LIGHT */
+    .theme-light {
+      --bg:#e5ddd5; --panel:#f0f0f0; --text:#111b21; --muted:#667781; --accent:#25D366; --accent-2:#128C7E;
+      --chip:#ffffff; --chip-border:#d1d7db; --bot:#ffffff; --user:#dcf8c6; --user-border:#cdeabc;
+    }
+    /* Dark (from earlier v2) */
+    .theme-dark {
+      --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --accent:#22c55e; --accent-2:#06b6d4;
+      --chip:#0b1220; --chip-border:#1f2937; --bot:#0b1220; --user:#075e54; --user-border:#0b7d6b;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial; color: var(--text); }
+    /* Wallpaper pattern in light mode only */
+    body.theme-light {
+      background: radial-gradient(circle at 25px 25px, rgba(0,0,0,0.03) 2px, transparent 2px) 0 0/50px 50px,
+                  radial-gradient(circle at 5px 5px, rgba(0,0,0,0.02) 1.5px, transparent 1.5px) 0 0/25px 25px,
+                  var(--bg);
+    }
+    body.theme-dark { background: var(--bg); }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .card { 
+background: transparent; 
+display:flex; 
+flex-direction:column; 
+min-height: 80vh; 
+padding-top: 120px; 
+}
+
+    .header {
+position:fixed;
+top:0;
+left:0;
+right:0;
+z-index:9999;
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:12px;
+background:#075E54;
+padding:16px 20px;
+box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+    .header h1 { color:#ffffff; font-weight:700; margin:0; }
+    .header .sub { color: var(--muted); font-size:.9rem; }
+    .toggle { padding:8px 12px; border-radius:999px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); color:#fff; border:none; font-weight:600; cursor:pointer; }
+
+    .controls { display:flex; gap:8px; align-items:center; color: var(--muted); margin: 6px 0 8px; flex-wrap:wrap; }
+    .controls label { font-size:.85rem; }
+    .controls select { background:#ffffff; color:inherit; border:1px solid #e0e0e0; border-radius:8px; padding:6px 8px; }
+    body.theme-dark .controls select { background:#0b1220; color:var(--text); border:1px solid #334155; }
+
+    .chat { flex:1 1 auto; overflow:auto; padding:8px 8px 0 8px; display:flex; flex-direction:column; gap:8px; }
+    .msg { max-width: 72%; padding: 8px 10px; border-radius: 12px; line-height:1.35; white-space: pre-wrap; position:relative; font-size: 0.97rem; }
+    .bot { background:var(--bot); border:1px solid var(--chip-border); align-self:flex-start; }
+    .user { background:var(--user); border:1px solid var(--user-border); align-self:flex-end; }
+    .msg .time { display:block; color:var(--muted); font-size:.72rem; margin-top:4px; text-align:right; }
+    .msg.bot::after { content:''; position:absolute; left:-6px; bottom:0; border-width:6px 6px 0 0; border-style:solid; border-color:var(--bot) transparent transparent transparent; }
+    .msg.user::after { content:''; position:absolute; right:-6px; bottom:0; border-width:6px 0 0 6px; border-style:solid; border-color:var(--user) transparent transparent transparent; }
+
+    .input-row { flex: 0 0 auto; display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; position:sticky; bottom:0; background:var(--panel); padding:8px; border-top:1px solid var(--chip-border); border-radius:12px; }
+    input { flex: 1; min-width: 260px; padding: 10px 12px; border-radius: 20px; border: 1px solid #e0e0e0; background: #ffffff; color: var(--text); }
+    body.theme-dark input { border: 1px solid #334155; background:#0b1220; color: var(--text); }
+
+    button { padding:10px 14px; border-radius:20px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); color:#ffffff; border:none; font-weight:600; cursor:pointer; }
+
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#ffffff; color:var(--muted); font-size:.8rem; border:1px solid var(--chip-border); }
+    body.theme-dark .pill { background:#0b1220; }
+
+    .footer { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+
+    .chips { display:flex; gap:8px; flex-wrap:wrap; }
+    .chip { padding:8px 12px; border-radius:999px; background: var(--chip); border:1px solid var(--chip-border); cursor:pointer; font-size:.9rem; color:var(--text); }
+    .chip.active { outline:2px solid var(--accent); }
+
+    .out { background:#ffffff; border:1px dashed var(--chip-border); padding:12px; border-radius:12px; white-space:pre-wrap; color:var(--text); }
+    body.theme-dark .out { background:#0b1220; }
+
+    .inline-start { display:inline-flex; gap:10px; align-items:center; }
+    .inline-start button { white-space:nowrap; }
+
+    /* Typing indicator */
+    .typing { padding:10px 14px; }
+    .typing .dots i { width:6px; height:6px; display:inline-block; margin:0 2px; border-radius:50%; background:#b0bec5; animation: blink 1.2s infinite; }
+    .typing .dots i:nth-child(2){ animation-delay:.2s; }
+    .typing .dots i:nth-child(3){ animation-delay:.4s; }
+    @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+    /* Quick refine row */
+    .refine { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .refine button { background:#e9f8f1; color:#075E54; border:1px solid #b8efd5; }
+    body.theme-dark .refine button { background:#093d35; color:#e5e7eb; border:1px solid #0f5a4f; }
+
+    /* Reactions */
+    .react-bar { position:absolute; right:6px; top:-22px; background:#ffffff; border:1px solid var(--chip-border); border-radius:999px; padding:2px 6px; opacity:0; transition:opacity .15s; display:flex; gap:4px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    body.theme-dark .react-bar { background:#0b1220; }
+    .msg:hover .react-bar { opacity:1; }
+    .react-emoji { cursor:pointer; }
+    .react-emoji:hover { transform: scale(1.15); }
+    .react-badge { position:absolute; right:6px; bottom:-14px; font-size: .9rem; display:none; }
+
+    /* WhatsApp Share */
+    .wa { background:#25D366; color:#0b2e24; border:none; }
+
+    /* Quick-picker header */
+    .picker-title { font-weight:600; color:var(--muted); }
+  </style>
+
+<script id="vh-fix">(function(){
+function setVH(){var vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px');}
+setVH(); window.addEventListener('resize', setVH, {passive:true}); window.addEventListener('orientationchange', setVH, {passive:true});
+})();</script>
+
+<style id="universal-mobile-fix-v2">
+  html, body { height: -webkit-fill-available; }
+  .card { min-height: calc(var(--vh, 1vh) * 100); }
+  .input-row { padding-bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 10; }
+</style>
+  </head>
+<body class="theme-light">
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div>
+          <h1>Icebreaking Assistance</h1>
+        </div>
+        <button class="toggle" id="themeToggle" title="Toggle Light/Dark">Switch to Dark</button>
+      </div>
+
+      <div class="controls">
+        <label for="speed">Typing speed:</label>
+        <select id="speed">
+          <option value="200">Fast</option>
+          <option selected value="350">Normal</option>
+          <option value="700">Slow</option>
+        </select>
+      </div>
+
+      <div class="chat" id="chat"></div>
+      <div class="input-row" id="inputRow"></div>
+      <div class="footer">Runs fully in your browser. Click an option or press <b>Enter</b> to submit.</div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle with localStorage
+    const bodyEl = document.body;
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('ibma_theme');
+    if (savedTheme) { bodyEl.className = savedTheme; themeToggleBtn.textContent = savedTheme==='theme-dark'?'Switch to Light':'Switch to Dark'; }
+    themeToggleBtn.onclick = () => {
+      const next = bodyEl.classList.contains('theme-dark') ? 'theme-light' : 'theme-dark';
+      bodyEl.className = next;
+      themeToggleBtn.textContent = next==='theme-dark'?'Switch to Light':'Switch to Dark';
+      localStorage.setItem('ibma_theme', next);
+    };
+
+    let TYPING_DELAY_MS = 350;
+    const speedSel = () => document.getElementById('speed');
+    function getDelay(){ return TYPING_DELAY_MS; }
+    window.addEventListener('change', (e)=>{
+      if (e.target && e.target.id === 'speed') {
+        const v = parseInt(e.target.value, 10);
+        if (!Number.isNaN(v)) TYPING_DELAY_MS = v;
+      }
+    });
+
+    
+    // ----------------------- EXCEL MODEL (baked in) -----------------------
+    // Extracted from "Icebreaking Assistance.xlsx"
+    const EXCEL_MODEL = {
+  "languages": [
+    "English",
+    "Hindi",
+    "Hinglish",
+    "Marathi",
+    "Bengali",
+    "Tamil",
+    "Telugu",
+    "Assamese"
+  ],
+  "languagePrompt": "Preferred Language of the Customer?",
+  "promptsByLanguage": {
+    "English": {
+      "name": "Name of the Customer",
+      "age": "Age of the Customer",
+      "gender": "Gender",
+      "profession": "Profession of the Customer"
+    },
+    "Hindi": {
+      "name": "ग्राहक का नाम",
+      "age": "ग्राहक की आयु",
+      "gender": "लिंग",
+      "profession": "ग्राहक का पेशा"
+    },
+    "Hinglish": {
+      "name": "Grahak ka Naam",
+      "age": "Grahak ki Aayu",
+      "gender": "Gender",
+      "profession": "Grahak ka Pesha"
+    },
+    "Marathi": {
+      "name": "ग्राहकाचे नाव",
+      "age": "ग्राहकाचे वय",
+      "gender": "लिंग",
+      "profession": "ग्राहकाचा व्यवसाय"
+    },
+    "Bengali": {
+      "name": "গ্রাহকের নাম",
+      "age": "গ্রাহকের বয়স",
+      "gender": "লিঙ্গ",
+      "profession": "গ্রাহকের পেশা"
+    },
+    "Tamil": {
+      "name": "வாடிக்கையாளர் பெயர்",
+      "age": "வாடிக்கையாளர் வயது",
+      "gender": "பாலினம்",
+      "profession": "வாடிக்கையாளர் தொழில்"
+    },
+    "Telugu": {
+      "name": "గ్రాహకుని పేరు",
+      "age": "గ్రాహకుని వయసు",
+      "gender": "లింగం",
+      "profession": "గ్రాహకుని వృత్తి"
+    },
+    "Assamese": {
+      "name": "গ্ৰাহকৰ নাম",
+      "age": "গ্ৰাহকৰ বয়স",
+      "gender": "লিংগ",
+      "profession": "গ্ৰাহকৰ পেচা"
+    }
+  },
+  "hopeLineByLanguage": {
+    "English": "Hope you are doing well.",
+    "Hindi": "आशा है आप सकुशल हैं।",
+    "Hinglish": "Aasha hai aap ache honge.",
+    "Marathi": "आशा आहे तुम्ही सुखरूप आहात.",
+    "Bengali": "आशा आहे तुम्ही सुखरूप आहात.",
+    "Tamil": "நீங்கள் நலமாக இருக்கிறீர்கள் என்று நம்புகிறேன்.",
+    "Telugu": "మీరు బాగున్నారని ఆశిస్తున్నాను.",
+    "Assamese": "আশা কৰোঁ আপুনি ভালেই আছেন।"
+  },
+  "ageOptions": [
+    "18-25",
+    "26-45",
+    "46-60",
+    "60+"
+  ],
+  "langData": {
+    "English": {
+      "genders": [
+        "Male",
+        "Female",
+        "Other"
+      ],
+      "femaleOption": "Female",
+      "professions": [
+        "Salaried",
+        "Self Employed",
+        "Retired",
+        "Homemaker"
+      ],
+      "professionMessage": {
+        "Salaried": "I've been working with many working professionals like you to build long‑term financial cushions that protect their income and future plans.",
+        "Self Employed": "I’ve been helping many business owners set up simple financial safety nets that offer long‑term security and tax benefits.",
+        "Retired": "I’ve been assisting individuals set up stable financial protection plans that preserve savings and ensure lifelong security.",
+        "Homemaker": "I’ve been supporting many homemakers like you to build simple financial protection plans that safeguard their family’s long‑term security and future needs."
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "Hi",
+          "cta": "Let me know if we can connect for a short meeting whenever you’re free.",
+          "insurance_fact": "Do you know, 78% of Gen Z buyers say life insurance before 30 is a no‑brainer as you get a bigger sum assured for a smaller premium. "
+        },
+        "26-45": {
+          "greeting": "Hello",
+          "cta": "Would love to connect for a quick chat this week—whenever you say.",
+          "insurance_fact": "Life insurance applications among adults under 40 have grown 30 since 2023 as more young people prioritize financial protection."
+        },
+        "46-60": {
+          "greeting": "Namaste",
+          "cta": "If convenient, let’s connect for a concise discussion this week.",
+          "insurance_fact": "Do you know, even in US, 40% of Adults feel, their existing cover is insufficient to meet their financial needs."
+        },
+        "60+": {
+          "greeting": "Namaste",
+          "cta": "Happy to connect for a short call at a time that suits you.",
+          "insurance_fact": "Do you know, in developed economies, 60% of the adult population has some or the other type of Life Insurance "
+        }
+      }
+    },
+    "Hindi": {
+      "genders": [
+        "पुरुष",
+        "महिला",
+        "अन्य"
+      ],
+      "femaleOption": "महिला",
+      "professions": [
+        "नौकरीपेशा",
+        "स्वरोज़गार/व्यवसाय",
+        "सेवानिवृत्त",
+        "गृहिणी"
+      ],
+      "professionMessage": {
+        "नौकरीपेशा": "मैं आपके जैसे कई कामकाजी प्रोफ़ेशनल्स के साथ काम करता हूँ / करती हूँ ताकि दीर्घकालिक वित्तीय सुरक्षा कुशन बनाए जाएँ जो आपकी आय और भविष्य की योजनाओं की रक्षा करें।",
+        "स्वरोज़गार/व्यवसाय": "मैंने कई व्यवसाय मालिकों कि सरल वित्तीय सुरक्षा जस्थापित करने में मदद की है।",
+        "सेवानिवृत्त": "मैं वित्तीय सुरक्षा योजनाएँ बनाने में लोगों की मदद करता हूँ / करती हूँ, जिससे उनकी बचत और जीवन सुरक्षित रहते हैं।",
+        "गृहिणी": "मैं आपके जैसी कई गृहिणियों की अपने परिवार के लिए सरल और भरोसेमंद वित्तीय सुरक्षा योजनाएँ बनाने में मदद करता/करती हूँ।"
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "नमस्ते",
+          "cta": "जब भी आपको समय मिले, हम एक छोटी‑सी मीटिंग कर सकते हैं।",
+          "insurance_fact": "क्या आप जानते हैं, जेन Z के 78% खरीदार मानते हैं कि 30 से पहले जीवन बीमा लेना समझदारी है, क्योंकि कम प्रीमियम में अधिक सम एश्योर्ड मिलता है।"
+        },
+        "26-45": {
+          "greeting": "नमस्ते",
+          "cta": "इस हफ़्ते एक छोटी‑सी चर्चा के लिए मिल सकते हैं — जब आप चाहें।",
+          "insurance_fact": "40 वर्ष से कम वयस्कों में जीवन बीमा आवेदनों में 2023 से 30% वृद्धि हुई है, क्योंकि अधिक युवा वित्तीय सुरक्षा को प्राथमिकता दे रहे हैं।"
+        },
+        "46-60": {
+          "greeting": "नमस्ते",
+          "cta": "यदि सुविधाजनक हो, तो इस सप्ताह एक संक्षिप्त चर्चा के लिए मीटिंग कर सकते हैं।",
+          "insurance_fact": "क्या आप जानते हैं, अमेरिका में भी 40% वयस्कों को लगता है कि उनकी वर्तमान कवरेज उनकी वित्तीय ज़रूरतों के लिए अपर्याप्त है।"
+        },
+        "60+": {
+          "greeting": "नमस्ते",
+          "cta": "आपको जब भी सही लगे, एक छोटी‑सी  कॉल के लिए मिल सकते हैं  ।",
+          "insurance_fact": "क्या आप जानते हैं, विकसित अर्थव्यवस्थाओं में लगभग 60% वयस्क आबादी के पास किसी न किसी प्रकार का जीवन बीमा होता है।"
+        }
+      }
+    },
+    "Hinglish": {
+      "genders": [
+        "Male",
+        "Female",
+        "Other"
+      ],
+      "femaleOption": "Female",
+      "professions": [
+        "Salaried",
+        "Self Employed",
+        "Retired",
+        "Homemaker"
+      ],
+      "professionMessage": {
+        "Salaried": "Main aap jaise kaamkar professionals ke saath kaam kar raha/rahi hoon taaki long‑term financial cushion ban sake jo aapki income aur future plans ko protect kare.",
+        "Self Employed": "Maine kai business owners ko simple financial safety nets set up karne me help ki hai jo long‑term security aur tax benefits dete hain.",
+        "Retired": "Main logon ko stable financial protection plans set up karne me assist kar raha/rahi hoon jo savings ko preserve karke lifelong security dete hain.",
+        "Homemaker": "Main aapke jaisi kai grihiniyon ki apne parivaar ke liye saral aur bharosemand vittiya suraksha yojnaayein banaane mein madad karta/karti hoon."
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "Hi",
+          "cta": "Jab bhi aap free ho, ek chhoti meeting ke liye connect kar lete hain?",
+          "insurance_fact": "Kya aap jaante hain, Gen Z ke 78% buyers kehte hain ki 30 se pehle life insurance lena no‑brainer hai—kam premium me bada sum assured milta hai."
+        },
+        "26-45": {
+          "greeting": "Hello",
+          "cta": "Is week hum ek quick chat ke liye connect kar sakte hai—jab aap bolein.",
+          "insurance_fact": "40 se kam umar ke adults me life insurance applications 2023 se 30% badhi hain, kyunki zyada young log financial protection ko priority de rahe hain."
+        },
+        "46-60": {
+          "greeting": "Namaste",
+          "cta": "Agar convenient ho, is week iss par ek concise discussion kar lete hain.",
+          "insurance_fact": "Kya aap jaante hain, US me bhi 40% adults ko lagta hai ki unki existing cover unki financial zarooraton ke liye kaafi nahi hai."
+        },
+        "60+": {
+          "greeting": "Namaste",
+          "cta": "Aapko jab suit kare, ek short call ke liye we  can connect.",
+          "insurance_fact": "Developed economies me lagbhag 60% adult population ke paas kisi na kisi type ka life insurance hota hai."
+        }
+      }
+    },
+    "Marathi": {
+      "genders": [
+        "पुरुष",
+        "स्त्री",
+        "इतर"
+      ],
+      "femaleOption": "स्त्री",
+      "professions": [
+        "नोकरी करणारे",
+        "स्वतःचा व्यवसाय",
+        "सेवानिवृत्त",
+        "गृहिणी"
+      ],
+      "professionMessage": {
+        "नोकरी करणारे": "आपल्यासारख्या अनेक कामगार व्यावसायिकांसोबत मी दीर्घकालीन आर्थिक सुरक्षेचा कुशन तयार करण्याचे काम करत आहे, जे आपली उत्पन्न व भविष्यातील योजना सुरक्षित ठेवते.",
+        "स्वतःचा व्यवसाय": "मी अनेक व्यवसाय मालकांना सोपे आर्थिक सेफ्टी नेट्स उभारण्यास मदत केली आहे ज्यामुळे दीर्घकालीन सुरक्षा आणि कर सवलती मिळतात.",
+        "सेवानिवृत्त": "मी व्यक्तींना स्थिर आर्थिक संरक्षण योजना उभारण्यात मदत करत आहे ज्या बचत जपून ठेवतात आणि आजीवन सुरक्षा देतात.",
+        "गृहिणी": "मी तुमच्यासारख्या अनेक गृहिणींना त्यांच्या कुटुंबासाठी साध्या आणि विश्वासार्ह आर्थिक सुरक्षा योजना तयार करण्यासाठी मदत करत/करते."
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "नमस्कार",
+          "cta": "तुम्हाला वेळ असेल तेव्हा एका छोट्या मिटिंगसाठी बोलूया का?",
+          "insurance_fact": "माहिती आहे का, Gen Z मधील 78% खरेदीदार मानतात की 30 वर्षांपूर्वी जीवन विमा घेणे फायदेशीर आहे—कमी प्रीमियममध्ये अधिक सम अ‍ॅश्योर्ड मिळतो."
+        },
+        "26-45": {
+          "greeting": "नमस्कार",
+          "cta": "या आठवड्यात एक झटपट चर्चा करू—तुम्ही सांगा.",
+          "insurance_fact": "४० वर्षांखालील वयोगटात जीवन विमा अर्ज २०२३ पासून ३०% ने वाढले आहेत, कारण अधिक तरुण आर्थिक संरक्षणाला प्राधान्य देत आहेत."
+        },
+        "46-60": {
+          "greeting": "नमस्कार",
+          "cta": "सोयीचे असेल तर या आठवड्यात थोडक्यात चर्चा करूया.",
+          "insurance_fact": "माहिती आहे का, अमेरिकेत देखील ४०% प्रौढांना वाटते की त्यांचे विद्यमान कव्हर त्यांच्या गरजांसाठी अपुरे आहे."
+        },
+        "60+": {
+          "greeting": "नमस्कार",
+          "cta": "तुम्हाला सोयीचे असेल तेव्हा एका छोट्या कॉलसाठी आनंदाने जोडू.",
+          "insurance_fact": "विकसित अर्थव्यवस्थांमध्ये सुमारे ६०% प्रौढ लोकसंख्येकडे काही ना काही प्रकारचा जीवन विमा असतो."
+        }
+      }
+    },
+    "Bengali": {
+      "genders": [
+        "পুরুষ",
+        "মহিলা",
+        "অন্যান্য"
+      ],
+      "femaleOption": "মহিলা",
+      "professions": [
+        "বেতনভোগী",
+        "স্বনিয়োজিত/ব্যবসা",
+        "অবসরপ্রাপ্ত",
+        "গৃহিণী"
+      ],
+      "professionMessage": {
+        "বেতনভোগী": "আপনার মতো অনেক কর্মজীবী পেশাজীবীর সঙ্গে আমি কাজ করছি যাতে দীর্ঘমেয়াদি আর্থিক সুরক্ষা গড়ে তোলা যায়, যা আয় ও ভবিষ্যৎ পরিকল্পনাকে রক্ষা করে।",
+        "স্বনিয়োজিত/ব্যবসা": "আমি বহু ব্যবসায়িক মালিককে সহজ আর্থিক সুরক্ষা জাল গড়তে সাহায্য করেছি, যা দীর্ঘমেয়াদি সুরক্ষা ও কর সুবিধা দেয়।",
+        "অবসরপ্রাপ্ত": "আমি মানুষকে স্থিতিশীল আর্থিক সুরক্ষা পরিকল্পনা নিতে সহায়তা করছি, যা সঞ্চয় রক্ষা করে আজীবন নিরাপত্তা দেয়।",
+        "গৃহিণী": "আমি আপনার মতো গৃহিণীদের পরিবারের নিরাপত্তার জন্য সহজ ও নির্ভরযোগ্য আর্থিক পরিকল্পনা করতে সাহায্য করি।"
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "নমস্কার",
+          "cta": "আপনার সুবিধামতো কি আমরা একটি ছোট মিটিং করতে পারি?",
+          "insurance_fact": "আপনি কি জানেন, Gen Z‑এর ৭৮% ক্রেতা মনে করেন ৩০‑এর আগে জীবনবিমা নেওয়া বুদ্ধিমানের—কম প্রিমিয়ামে বেশি সাম অ্যাশিউর্ড মেলে।"
+        },
+        "26-45": {
+          "greeting": "নমস্কার",
+          "cta": "এই সপ্তাহে একটি সংক্ষিপ্ত আলাপের জন্য যুক্ত হতে চাই—আপনি বললেই।",
+          "insurance_fact": "৪০ বছরের কম বয়সিদের মধ্যে জীবনবিমার আবেদনে ২০২৩ থেকে ৩০% বৃদ্ধি পেয়েছে, কারণ আরও বেশি তরুণ আর্থিক সুরক্ষাকে অগ্রাধিকার দিচ্ছেন।"
+        },
+        "46-60": {
+          "greeting": "নমস্কার",
+          "cta": "সুবিধা হলে এই সপ্তাহে একটি সংক্ষিপ্ত আলোচনায় যুক্ত হই।",
+          "insurance_fact": "আপনি কি জানেন, যুক্তরাষ্ট্রেও ৪০% প্রাপ্তবয়স্ক মনে করেন তাদের বর্তমান কভার তাদের প্রয়োজনের তুলনায় অপর্যাপ্ত।"
+        },
+        "60+": {
+          "greeting": "নমস্কার",
+          "cta": "আপনার সময়মতো একটি ছোট কলের জন্য আনন্দের সঙ্গে যুক্ত হব।",
+          "insurance_fact": "বিকশিত অর্থনীতিতে প্রায় ৬০% প্রাপ্তবয়স্কের কোনো না কোনো ধরনের জীবনবিমা রয়েছে।"
+        }
+      }
+    },
+    "Tamil": {
+      "genders": [
+        "ஆண்",
+        "பெண்",
+        "மற்றவை"
+      ],
+      "femaleOption": "பெண்",
+      "professions": [
+        "ஊதியத்தொழிலாளர்",
+        "சுயதொழில்/வியாபாரம்",
+        "ஓய்வுபெற்றவர்",
+        "வீட்டுத்திருமதி"
+      ],
+      "professionMessage": {
+        "ஊதியத்தொழிலாளர்": "உங்களைப் போன்ற பல தொழில்முனைவர்களுடன் நான் இணைந்து, வருமானத்தையும் எதிர்காலத் திட்டங்களையும் பாதுகாக்கும் நீண்டகால நிதி பாதுகாப்புக் குஷன் உருவாக்கி வருகிறேன்.",
+        "சுயதொழில்/வியாபாரம்": "நான் பல வியாபார உரிமையாளர்களுக்கு எளிய நிதி பாதுகாப்பு வலைகளை அமைக்க உதவியுள்ளேன்; இது நீண்டகால பாதுகாப்பும் வரிசலுகைகளையும் வழங்குகிறது.",
+        "ஓய்வுபெற்றவர்": "சேமிப்பை பாதுகாத்து ஆயுள் முழுவதும் பாதுகாப்பு தரும் நிலையான நிதி பாதுகாப்புத் திட்டங்களை அமைக்க நான் நபர்களுக்கு உதவி செய்கிறேன்.",
+        "வீட்டுத்திருமதி": "உங்கள் போன்ற இல்லத்தரசிகளுக்கு குடும்ப பாதுகாப்புக்கான எளிய மற்றும் நம்பகமான நிதி திட்டங்களை உருவாக்க உதவுகிறேன்."
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "வணக்கம்",
+          "cta": "உங்களுக்கு வசதியாக இருக்கும் நேரத்தில் ஒரு குறுகிய சந்திப்புக்கு இணைவோமா?",
+          "insurance_fact": "தெரியுமா, Gen Z வாங்குபவர்களில் 78% பேர் 30‑க்கு முன் லைஃப் இன்ஷூரன்ஸ் எடுப்பது சிறந்தது என்கிறார்கள்—குறைந்த பிரீமியத்தில் அதிக சம்அஷ்யூர்டு கிடைக்கும்."
+        },
+        "26-45": {
+          "greeting": "வணக்கம்",
+          "cta": "இந்த வாரம் ஒரு துரித உரையாடலுக்காக இணைவோம்—நீங்கள் சொல்வதுபோல்.",
+          "insurance_fact": "40 வயதுக்குக் குறைந்த பெரியவர்களிடம் லைஃப் இன்ஷூரன்ஸ் விண்ணப்பங்கள் 2023‑இடமிருந்து 30% உயர்ந்துள்ளன; மேலும் இளைஞர்கள் நிதி பாதுகாப்புக்கு முன்னுரிமை தருகிறார்கள்."
+        },
+        "46-60": {
+          "greeting": "வணக்கம்",
+          "cta": "வசதியானால், இந்த வாரம் ஒரு சுருக்கமான கலந்துரையாடலுக்கு இணைவோம்.",
+          "insurance_fact": "அமெரிக்காவிலும் 40% பெரியவர்கள் தங்களின் தற்போதைய கவர் போதுமானதல்ல என்று நினைக்கிறார்கள்."
+        },
+        "60+": {
+          "greeting": "வணக்கம்",
+          "cta": "உங்களுக்கு ஏற்ற நேரத்தில் ஒரு சிறிய கால் செய்ய மகிழ்ச்சி.",
+          "insurance_fact": "முன்னேற்றமான பொருளாதாரங்களில் சுமார் 60% பெரியவர்களிடம் ஏதாவது வகை லைஃப் இன்ஷூரன்ஸ் உள்ளது."
+        }
+      }
+    },
+    "Telugu": {
+      "genders": [
+        "పురుషుడు",
+        "మహిళ",
+        "ఇతర"
+      ],
+      "femaleOption": "మహిళ",
+      "professions": [
+        "జీతభత్య ఉద్యోగి",
+        "స్వయం ఉపాధి/వ్యాపారం",
+        "విరమణ పొందిన వారు",
+        "గృహిణి"
+      ],
+      "professionMessage": {
+        "జీతభత్య ఉద్యోగి": "మీ లాంటి అనేక వృత్తిపరులతో కలిసి నేను దీర్ఘకాలిక ఆర్థిక రక్షణ కుషన్‌ను నిర్మిస్తున్నాను, ఇది మీ ఆదాయం మరియు భవిష్యత్ ప్రణాళికలను కాపాడుతుంది.",
+        "స్వయం ఉపాధి/వ్యాపారం": "నేను అనేక వ్యాపారదారులకు సులభమైన ఆర్థిక భద్రతా వలలు ఏర్పాటు చేయడంలో సహాయం చేశాను; ఇవి దీర్ఘకాల రక్షణతో పాటు పన్ను ప్రయోజనాలు ఇస్తాయి.",
+        "విరమణ పొందిన వారు": "సేవింగ్స్‌ను కాపాడుతూ జీవితాంతం భద్రతనిచ్చే స్థిరమైన ఆర్థిక రక్షణ ప్రణాళికలను ఏర్పాటు చేయడంలో నేను సహాయపడుతున్నాను.",
+        "గృహిణి": "మీ లాంటి గృహిణులకు కుటుంబ భద్రత కోసం సులభమైన మరియు నమ్మకమైన ఆర్థిక ప్రణాళికలు చేయడంలో నేను సహాయం చేస్తాను."
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "నమస్కారం",
+          "cta": "మీకు సమయం ఉన్నప్పుడు ఒక చిన్న మీటింగ్‌కు కలుద్దామా?",
+          "insurance_fact": "తెలుసా, Gen Z కొనుగోలుదారులలో 78% మంది 30కి ముందే లైఫ్ ఇన్సూరెన్స్ తీసుకోవడం మంచిదని అంటున్నారు—తక్కువ ప్రీమియంతో ఎక్కువ సమ్ అష్యూర్డ్ లభిస్తుంది."
+        },
+        "26-45": {
+          "greeting": "నమస్కారం",
+          "cta": "ఈ వారం ఒక క్విక్ చాట్‌కు కనెక్ట్ అవుదాం—మీరు చెప్పినప్పుడే.",
+          "insurance_fact": "40లోపు పెద్దలలో లైఫ్ ఇన్సూరెన్స్ అప్లికేషన్లు 2023 నుంచి 30% పెరిగాయి, ఎందుకంటే ఎక్కువ మంది యువకులు ఆర్థిక రక్షణకు ప్రాధాన్యమిస్తున్నారు."
+        },
+        "46-60": {
+          "greeting": "నమస్కారం",
+          "cta": "సౌకర్యంగా ఉంటే, ఈ వారం ఒక సంక్షిప్త చర్చ చేద్దాం.",
+          "insurance_fact": "అమెరికాలో కూడా 40% మంది పెద్దలకు తమ ప్రస్తుత కవర్ వారి అవసరాలకు సరిపోదని అనిపిస్తోంది."
+        },
+        "60+": {
+          "greeting": "నమస్కారం",
+          "cta": "మీకు అనుకూలమైన సమయంలో ఒక చిన్న కాల్‌కు సంతోషంగా కనెక్ట్ అవుతాను.",
+          "insurance_fact": "అభివృద్ధి చెందిన ఆర్థిక వ్యవస్థల్లో సుమారు 60% పెద్దలకు ఏదో ఒక రకమైన లైఫ్ ఇన్సూరెన్స్ ఉంటుంది."
+        }
+      }
+    },
+    "Assamese": {
+      "genders": [
+        "পুৰুষ",
+        "মহিলা",
+        "অন্য"
+      ],
+      "femaleOption": "মহিলা",
+      "professions": [
+        "বেতনভোগী",
+        "স্ব-নিয়োজিত/ব্যৱসায়",
+        "অবসৰপ্ৰাপ্ত",
+        "গৃহিণী"
+      ],
+      "professionMessage": {
+        "বেতনভোগী": "আপোনাৰ দৰে বহু কৰ্মজীৱী ব্যক্তিৰ সৈতে মই কাম কৰি আছোঁ যাতে দীঘলীয়া আৰ্থিক সুৰক্ষা গঠিত হয়, যি আপোনাৰ আয় আৰু ভৱিষ্যৎ পৰিকল্পনাক সুৰক্ষিত ৰাখে।",
+        "স্ব-নিয়োজিত/ব্যৱসায়": "মই বহু ব্যৱসায়ীয়ে সহজ আৰ্থিক সুৰক্ষা জাল স্থাপন কৰাত সহায়তা কৰিছে; ইয়াত দীঘলীয়া সুৰক্ষা আৰু কৰ সুবিধা থাকে।",
+        "অবসৰপ্ৰাপ্ত": "হেঁয়ে মানুহক স্থিৰ আৰ্থিক সুৰক্ষা পৰিকল্পনা স্থাপন কৰাত সহায় কৰি আছোঁ, যিয়ে থক‑বচা সংৰক্ষণ কৰি আজীৱন সুৰক্ষা দিয়ে।",
+        "গৃহিণী": "আপোনাৰ দৰে গৃহিণীসকলক পৰিয়ালৰ সুৰক্ষাৰ বাবে সহজ আৰু ভৰসাযোগ্য আৰ্থিক পৰিকল্পনা কৰিবলৈ মই সহায় কৰোঁ।"
+      },
+      "ageMap": {
+        "18-25": {
+          "greeting": "নমস্কাৰ",
+          "cta": "আপোনাৰ সুবিধা হলে, এটা সৰু মিটিঙৰ বাবে জড়াব নে?",
+          "insurance_fact": "আপুনি জানেনে, Gen Z ৰ ৭৮% ক্ৰেতাই ভাবে ৩০ৰ আগতে জীৱন বীমা লোৱা বুদ্ধিমান—কম প্ৰিমিয়ামত বেছি sum assured মেলে।"
+        },
+        "26-45": {
+          "greeting": "নমস্কাৰ",
+          "cta": "এই সপ্তাহতে এটা দ্ৰুত আলোচনাৰ বাবে জড়াম—আপুনি ক’ব খন।",
+          "insurance_fact": "৪০ বছৰতকৈ কম বয়সীয়া লোকেৰে জীৱন বীমাৰ আবেদন ২০২৩ ৰ পৰাই ৩০% বৃদ্ধি পাইছে, কিয়নো অধিক যুৱক-যুৱতীয়ে আৰ্থিক সুৰক্ষাক প্ৰাথমিকতা দিছে।"
+        },
+        "46-60": {
+          "greeting": "নমস্কাৰ",
+          "cta": "সুবিধা হ’লে, এই সপ্তাহতে সৰু এক আলোচনা কৰোঁ।",
+          "insurance_fact": "আপুনি জানেনে, ইউ.এছ.-তো ৪০% প্রাপ্তবয়স্কৰ মনত আছে যে তেওঁলোকৰ বৰ্তমান কভার প্ৰয়োজন অনুসাৰে যথেষ্ট নহয়।"
+        },
+        "60+": {
+          "greeting": "নমস্কাৰ",
+          "cta": "আপোনাৰ সুবিধামতে এটা সৰু কলৰ বাবে আনন্দেৰে জড়াম।",
+          "insurance_fact": "উন্নত অৰ্থনীতি থকা দেশসমূহত প্ৰায় ৬০% প্রাপ্তবয়স্কৰ কাষত কিবা না কিবা ধৰণৰ জীৱন বীমা থাকে।"
+        }
+      }
+    }
+  },
+  "outputLabel": "Icebreaking Message"
+};
+
+
+    function computeIcebreakingOutput(language, name, age, gender, profession) {
+  const lang = EXCEL_MODEL.langData[language] ? language : (EXCEL_MODEL.languages[0] || "English");
+  const ld = EXCEL_MODEL.langData[lang] || {};
+  const hopeLine = (EXCEL_MODEL.hopeLineByLanguage && EXCEL_MODEL.hopeLineByLanguage[lang]) ? EXCEL_MODEL.hopeLineByLanguage[lang] : "";
+  const ageMap = (ld.ageMap || {});
+  const ageRec = ageMap[age] || {};
+  const greeting = ageRec.greeting || "";
+  const cta = ageRec.cta || "";
+  const profMsg = (ld.professionMessage && ld.professionMessage[profession]) ? ld.professionMessage[profession] : "";
+
+  // After-name logic from Excel Front end!B19 via helpers in column Y:
+  // If (genderCategory=Male AND professionCategory=Salaried) => "Sir"
+  // If (genderCategory=Female AND professionCategory=Salaried) => "Mam"
+  // Else => "Ji"
+  const femaleOpt = (ld.femaleOption || "");
+  const genderCategory = (String(gender||"") === String(femaleOpt)) ? "Female" : "Male";
+
+  // Profession category by position in the profession list (A2, A3, A4, else Homemaker)
+  const profList = ld.professions || [];
+  const salaried = profList[0] || "Salaried";
+  const selfEmp = profList[1] || "Self Employed";
+  const retired = profList[2] || "Retired";
+  let professionCategory = "Homemaker";
+  if (String(profession) === String(salaried)) professionCategory = "Salaried";
+  else if (String(profession) === String(selfEmp)) professionCategory = "Self-Employed";
+  else if (String(profession) === String(retired)) professionCategory = "Retired";
+
+  let afterName = "Ji";
+  if (genderCategory === "Male" && professionCategory === "Salaried") afterName = "Sir";
+  else if (genderCategory === "Female" && professionCategory === "Salaried") afterName = "Mam";
+
+  const firstLine = [greeting, name, afterName].filter(Boolean).join(" ").trim();
+  const lines = [firstLine, hopeLine, profMsg, cta].filter(x => (x ?? "").toString().trim() !== "");
+  return lines.join("\n");
+}
+
+
+const MODEL = {
+  // Flow is fixed (5 inputs) but prompts/options depend on selected Language (Excel Front end + language sheets)
+  inputs: [
+    { key: "language", name: "Language", prompt: null, type: "choice", allowedValues: [], required: true },
+    { key: "customer_name", name: "Customer Name", prompt: null, type: "text", required: true },
+    { key: "age", name: "Age", prompt: null, type: "choice", allowedValues: [], required: true },
+    { key: "gender", name: "Gender", prompt: null, type: "choice", allowedValues: [], required: true },
+    { key: "profession", name: "Profession", prompt: null, type: "choice", allowedValues: [], required: true },
+  ],
+  output: { label: (EXCEL_MODEL.outputLabel || "Icebreaking Message") },
+  rule: {
+    firstMessage: "Before I give your ice breaking message, I'll need some inputs—can you help me with that?",
+    startButton: "Yes!! Let's Begin!!"
+  }
+};
+
+
+
+    const chat = document.getElementById('chat');
+    const inputRow = document.getElementById('inputRow');
+
+    function scrollToLatest() {
+      chat.scrollTop = chat.scrollHeight;
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    // Reactions
+    function addReactions(div){
+      const bar = document.createElement('div');
+      bar.className = 'react-bar';
+      ['\uD83D\uDC4D','❤️','\uD83D\uDE42'].forEach(r => {
+        const e = document.createElement('span'); e.className='react-emoji'; e.textContent=r; e.setAttribute('data-r', r); bar.appendChild(e);
+      });
+      const badge = document.createElement('div'); badge.className = 'react-badge';
+      bar.addEventListener('click', (ev)=>{
+        if (ev.target && ev.target.getAttribute('data-r')){
+          badge.textContent = ev.target.getAttribute('data-r');
+          badge.style.display = 'inline-block';
+        }
+      });
+      div.appendChild(bar); div.appendChild(badge);
+    }
+
+    // push() with timestamp + reactions
+    function push(role, text) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      const span = document.createElement('span');
+      span.textContent = text;
+      div.appendChild(span);
+      const t = document.createElement('span');
+      t.className = 'time';
+      const dt = new Date();
+      t.textContent = dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      div.appendChild(t);
+      chat.appendChild(div);
+      addReactions(div);
+      scrollToLatest();
+      return div;
+    }
+
+    // Typing indicator + delayed bot say (uses selected speed)
+    function showTyping(ms) {
+      const tip = document.createElement('div');
+      tip.className = 'msg bot typing';
+      tip.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+      chat.appendChild(tip);
+      scrollToLatest();
+      return new Promise(res => setTimeout(()=> { tip.remove(); res(); }, ms));
+    }
+    async function say(text, delayMs) {
+      const d = typeof delayMs==='number' ? delayMs : getDelay();
+      await showTyping(d);
+      push('bot', text);
+    }
+
+    function clearInputRow(){ inputRow.innerHTML = ''; }
+
+    function scrollToBottom(){ scrollToLatest(); }
+
+    function resetFlow(renderImmediately){
+      try{
+        idx = 0;
+        for (const k in answers){ try{ delete answers[k]; }catch(e){} }
+        chat.innerHTML = '';
+        clearInputRow();
+        if (renderImmediately) renderStart();
+      }catch(e){
+        // last resort hard reload
+        location.reload();
+      }
+    }
+
+
+    function currentLanguage(){
+      const lang = answers['Language'];
+      return (EXCEL_MODEL.langData && EXCEL_MODEL.langData[lang]) ? lang : (EXCEL_MODEL.languages[0] || 'English');
+    }
+
+    function promptFor(spec){
+      const lang = currentLanguage();
+      const p = (EXCEL_MODEL.promptsByLanguage && EXCEL_MODEL.promptsByLanguage[lang]) || {};
+      if (spec.key === 'language') return EXCEL_MODEL.languagePrompt || 'Preferred Language of the Customer?';
+      if (spec.key === 'customer_name') return (p.name || 'Name of the Customer') + '? ';
+      if (spec.key === 'age') return (p.age || 'Age of the Customer') + '?';
+      if (spec.key === 'gender') return (p.gender || 'Gender') + '?';
+      if (spec.key === 'profession') return (p.profession || 'Profession of the Customer') + '? ';
+      return (spec.prompt || '');
+    }
+
+    function optionsFor(spec){
+      const lang = currentLanguage();
+      const ld = (EXCEL_MODEL.langData && EXCEL_MODEL.langData[lang]) ? EXCEL_MODEL.langData[lang] : {};
+      if (spec.key === 'language') return (EXCEL_MODEL.languages || []).slice();
+      if (spec.key === 'age') return (EXCEL_MODEL.ageOptions || []).slice();
+      if (spec.key === 'gender') return (ld.genders || []).slice();
+      if (spec.key === 'profession') return (ld.professions || []).slice();
+      return (spec.allowedValues || []).slice();
+    }
+
+const answers = {}; let idx = 0; let currentSubmit;
+
+    // Command helpers
+    const fieldOrder = () => MODEL.inputs.map(x => x.name);
+    function goToField(name){ const i = fieldOrder().indexOf(name); if (i>=0) { idx = i; askNext(); } }
+    function tryCommand(text){
+      const s = (text||'').trim().toLowerCase();
+      if (!s) return false;
+      if (s === 'restart') { idx=0; for (let k in answers) delete answers[k]; chat.innerHTML=''; renderStart(); return true; }
+      if (s === 'back') { idx = Math.max(0, idx-1); askNext(); return true; }
+      const m = s.match(/^edit\s+(.*)/);
+      if (m) {
+        const label = m[1].trim();
+        const target = fieldOrder().find(f => f.toLowerCase().startsWith(label));
+        if (target) { goToField(target); return true; }
+      }
+      return false;
+    }
+
+    // Soft NLP mappers for free-typed inputs
+    const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').trim();
+    const fuzzyPick = (input, options=[]) => {
+      const n = norm(input);
+      if (!n) return null;
+      const exact = options.find(o => norm(o) === n);
+      if (exact) return exact;
+      return options.find(o => norm(o).startsWith(n)) || null;
+    };
+    const mapAge = s => {
+      s = String(s||'').toLowerCase();
+      if (/^(\b)(1[8-9]|2[0-5])(\b)$/.test(s)) return "18-25";
+      if (/^(\b)(2[6-9]|3\d|4[0-5])(\b)$/.test(s)) return "26-45";
+      if (/^(\b)(4[6-9]|5\d|60)(\b)$/.test(s)) return "46-60";
+      if (/^(\b)(6\d|7\d|80|60\+)(\b)$/.test(s)) return "60+";
+      return null;
+    };
+
+    async function renderStart(){
+      const s = speedSel(); if (s) s.value = String(TYPING_DELAY_MS);
+      await say(MODEL.rule.firstMessage, getDelay());
+      const wrap = document.createElement('div');
+      wrap.className = 'msg bot';
+      const inline = document.createElement('span');
+      inline.className = 'inline-start';
+      const btn = document.createElement('button');
+      btn.textContent = MODEL.rule.startButton;
+      btn.onclick = () => {
+        // Set initial options for Language; others will be populated after language selection
+        MODEL.inputs[0].allowedValues = (EXCEL_MODEL.languages || []).slice();
+        askNext();
+      };
+      inline.appendChild(btn);
+      wrap.appendChild(inline);
+      const t = document.createElement('span');
+      t.className = 'time'; t.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      chat.appendChild(wrap);
+      addReactions(wrap);
+      setTimeout(scrollToLatest, 0);
+    }
+
+    function setGlobalEnter(handler){
+      currentSubmit = handler;
+      document.onkeydown = (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          if(typeof currentSubmit === 'function') currentSubmit();
+        }
+      };
+    }
+
+    async function askNext(){
+      clearInputRow();
+      if(idx >= MODEL.inputs.length){ await generateOutput(); return; }
+      var spec = MODEL.inputs[idx];
+      await say(promptFor(spec), getDelay());
+
+      const opts = optionsFor(spec);
+      if(spec.type === 'choice' && (opts||[]).length){
+        const wrap = document.createElement('div');
+        wrap.className = 'chips';
+        (opts||[]).forEach(v=>{
+          const c = document.createElement('span');
+          c.className = 'chip';
+          c.textContent = v;
+          c.onclick = ()=>{ submitAnswer(spec, v); };
+          wrap.appendChild(c);
+        });
+        inputRow.appendChild(wrap);
+        setTimeout(scrollToLatest, 0);
+
+        const hint = document.createElement('span');
+        hint.className = 'pill';
+        hint.textContent = 'Press Enter to submit · Commands: back | restart | edit <field>';
+        inputRow.appendChild(hint);
+
+        const backBtn = document.createElement('button');
+        backBtn.textContent = 'Back'; backBtn.className='chip';
+        backBtn.onclick = ()=>{ idx = Math.max(0, idx-1); askNext(); };
+        inputRow.appendChild(backBtn);
+
+        let selected = '';
+        setGlobalEnter(()=>{
+          if(!selected && spec.required && !wrap.querySelector('.chip.active')){
+            alert('Please select an option or click one of the chips.'); return;
+          }
+          const active = wrap.querySelector('.chip.active');
+          const val = active ? active.textContent : selected;
+          submitAnswer(spec, val || '');
+        });
+        wrap.addEventListener('click', (e)=>{
+          if(e.target.classList.contains('chip')){
+            [...wrap.children].forEach(n=>n.classList.remove('active'));
+            e.target.classList.add('active');
+            selected = e.target.textContent;
+          }
+        });
+      } else {
+        spec.allowedValues = optionsFor(spec);
+        const inp = document.createElement('input');
+        inputRow.appendChild(inp);
+        const btn = document.createElement('button');
+        btn.textContent = 'Submit';
+        btn.onclick = () => {
+          const v = inp.value.trim();
+          if (tryCommand(v)) return;
+          if(!v && spec.required){ alert('This field is required.'); return; }
+          let val = v;
+          if (spec.name === 'Age Group') { const m = mapAge(v); if (m) val = m; }
+          else if (['Profession','State','Tone','Residence'].includes(spec.name)) { const m = fuzzyPick(v, spec.allowedValues||[]); if (m) val = m; }
+          submitAnswer(spec, val);
+        };
+        inputRow.appendChild(btn);
+        const backBtn = document.createElement('button');
+        backBtn.textContent = 'Back'; backBtn.className='chip'; backBtn.onclick = ()=>{ idx = Math.max(0, idx-1); askNext(); };
+        inputRow.appendChild(backBtn);
+        inp.focus();
+        setTimeout(scrollToLatest, 0);
+        setGlobalEnter(()=> btn.click());
+      }
+    }
+
+    function submitAnswer(spec, value){
+      answers[spec.name] = value;
+      push('user', value || '(skip)');
+      if(spec.name === 'Advisor Name'){
+        idx = MODEL.inputs.length;
+        generateOutput();
+        return;
+      }
+      idx++; askNext();
+    }
+
+    // NEW: robust copy to clipboard (works in both secure/non-secure with fallback)
+    async function copyToClipboard(text){
+      try{
+        if (navigator.clipboard && window.isSecureContext){
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity='0'; ta.style.left='-9999px';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          if(!ok) throw new Error('execCommand failed');
+        }
+        return true;
+      }catch(e){
+        try{ window.prompt('Copy this message:', text); }catch(_e){}
+        return false;
+      }
+    }
+
+    // NEW: Prefer normal WhatsApp; graceful fallbacks
+    function shareOnWhatsApp(text){
+      const encoded = encodeURIComponent(text);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile){
+        // Try normal WhatsApp app deep link first
+        window.location.href = 'whatsapp://send?text=' + encoded;
+        // Fallback to the universal web endpoint shortly after
+        setTimeout(()=>{ window.open('https://api.whatsapp.com/send?text=' + encoded, '_blank'); }, 500);
+      } else {
+        // Desktop web WhatsApp
+        window.open('https://web.whatsapp.com/send?text=' + encoded, '_blank');
+      }
+    }
+
+    // NEW: Quick picker to change a single field and immediately regenerate output
+    function showQuickPicker(fieldName, label){
+      clearInputRow();
+      const spec = MODEL.inputs.find(x => x.name === fieldName);
+      const title = document.createElement('span');
+      title.className = 'picker-title';
+      title.textContent = 'Select ' + (label || fieldName) + ':';
+      inputRow.appendChild(title);
+
+      const wrap = document.createElement('div'); wrap.className='chips';
+      const allowed = (spec && spec.allowedValues) ? spec.allowedValues : [];
+      allowed.forEach(v=>{
+        const c = document.createElement('span'); c.className='chip'; c.textContent = v;
+        c.onclick = ()=>{ answers[fieldName] = v; generateOutput(); };
+        wrap.appendChild(c);
+      });
+      inputRow.appendChild(wrap);
+
+      const cancel = document.createElement('button'); cancel.textContent='Cancel'; cancel.className='chip';
+      cancel.onclick = ()=>{ generateOutput(); };
+      inputRow.appendChild(cancel);
+
+      document.onkeydown = null; // no Enter handling for quick picker
+      setTimeout(scrollToLatest, 0);
+    }
+async function generateOutput(){
+  clearInputRow();
+  document.onkeydown = null;
+
+  const language = (answers['Language'] || '').trim();
+  const name = (answers['Customer Name'] || '').trim();
+  const age = (answers['Age'] || '').trim();
+  const gender = (answers['Gender'] || '').trim();
+  const profession = (answers['Profession'] || '').trim();
+
+  const finalMsg = computeIcebreakingOutput(language, name, age, gender, profession);
+
+  await say(MODEL.output.label, getDelay());
+
+  const box = document.createElement('div');
+  box.className = 'out';
+  box.textContent = finalMsg;
+  chat.appendChild(box);
+  scrollToLatest();
+
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy Message';
+  copyBtn.onclick = async () => {
+    const ok = await copyToClipboard(finalMsg);
+    copyBtn.textContent = ok ? 'Copied!' : 'Copy failed';
+    setTimeout(() => (copyBtn.textContent = 'Copy Message'), 1500);
+  };
+  inputRow.appendChild(copyBtn);
+
+  const waBtn = document.createElement('button');
+  waBtn.textContent = 'Share on WhatsApp';
+  waBtn.className = 'wa';
+  waBtn.onclick = () => shareOnWhatsApp(finalMsg);
+  inputRow.appendChild(waBtn);
+
+  const restartBtn = document.createElement('button');
+  restartBtn.textContent = 'Start Over';
+  restartBtn.onclick = () => resetFlow(true);
+  inputRow.appendChild(restartBtn);
+
+  scrollToBottom();
+}
+
+renderStart();
+  
+// Ensure first message visible on page open
+window.addEventListener('load', function(){
+  try{
+    window.scrollTo(0,0);
+    var c=document.getElementById('chat');
+    if(c){ c.scrollTop = 0; }
+  }catch(e){}
+});
+
+</script>
+</body>
+</html>
