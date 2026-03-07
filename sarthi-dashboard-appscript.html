@@ -129,10 +129,23 @@ function renderGrid(list) {
     const btn = document.createElement("button");
     btn.className = "card";
     btn.textContent = norm(person.Name);
-    btn.addEventListener("click", async () => {
-      navStack.push(person);
-      await renderCurrentLevel();
-    });
+   btn.addEventListener("click", async () => {
+
+  const role = (person.Role || "").trim().toLowerCase()
+
+  if (role === "advisor") {
+
+    window.location.href =
+    `advisor-actions.html?name=${encodeURIComponent(person.Name)}&userId=${encodeURIComponent(person.UserID)}`
+
+    return
+  }
+
+  navStack.push(person)
+  await renderCurrentLevel()
+
+})
+
     grid.appendChild(btn);
   });
 }
