@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#075E54"/>
+<title>Sarthi Dashboard</title>
+<style>
+:root{--bg:#e5ddd5;--card:#fff;--line:#9cb4aa;--text:#17302b;--muted:#62756f;--btnbg:#dff5ed;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:42px 18px 40px;min-height:100vh}
+.bubble{background:var(--card);border:2px solid var(--line);padding:18px 20px;max-width:620px;font-size:20px;line-height:1.45}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:22px 0 10px}
+.crumbs{font-size:15px;font-weight:800;color:var(--muted)}
+.userMeta{font-size:15px;font-weight:800;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:26px;padding:22px 0 34px}
+.card{min-height:98px;border:2px solid #7f968d;border-radius:16px;background:var(--btnbg);padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;cursor:pointer;font-weight:900;font-size:20px;color:#29423c;box-shadow:0 2px 0 rgba(0,0,0,.05)}
+.card small{display:block;font-size:13px;font-weight:700;color:#47615a;margin-top:6px;line-height:1.25}
+.card.leaf{background:#edf8f4}
+.actions{display:flex;justify-content:center;gap:26px;flex-wrap:wrap;margin-top:10px}
+.btn{border:2px solid #7f968d;cursor:pointer;padding:16px 26px;border-radius:16px;font-weight:900;font-size:20px;color:#29423c;background:var(--btnbg);min-width:170px;box-shadow:0 2px 0 rgba(0,0,0,.05)}
+.empty{margin-top:28px;background:#fff;border:2px dashed var(--line);padding:24px;border-radius:14px;text-align:center;color:#557069;font-weight:700}
+.note{margin-top:10px;color:#557069;font-size:14px;font-weight:700}
+@media (max-width:640px){
+  .wrap{padding-top:30px}
+  .bubble{font-size:18px}
+  .grid{gap:18px}
+  .card{font-size:18px;min-height:88px}
+  .actions{gap:16px}
+  .btn{min-width:140px;font-size:18px;padding:14px 22px}
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bubble">
+      <strong>Get Ready for deep-dive!!</strong><br/><br/>
+      <span id="promptText">Whom would you like to reach out Today?</span>
+    </div>
+
+    <div class="toolbar">
+      <div id="breadcrumbs" class="crumbs"></div>
+      <div id="userMeta" class="userMeta"></div>
+    </div>
+
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" style="display:none"></div>
+
+    <div class="actions">
+      <button class="btn" id="levelBackBtn">Back</button>
+      <button class="btn" id="logoutBtn">Logout</button>
+    </div>
+    <div class="note">Tap any box to dive deeper. Advisors are the last level for this phase.</div>
+  </div>
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+const STORAGE_KEY = "sarthiCurrentUser";
+
+let currentUser = null;
+let navStack = [];
+
+function norm(v) { return String(v || "").trim(); }
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "sarthiCb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+    const script = document.createElement("script");
+    const sep = url.includes("?") ? "&" : "?";
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("Request timeout"));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+    }
+
+    window[cb] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    script.src = `${url}${sep}callback=${cb}`;
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Network error"));
+    };
+    document.body.appendChild(script);
+  });
+}
+
+function setEmpty(text) {
+  const empty = document.getElementById("empty");
+  empty.style.display = "block";
+  empty.textContent = text;
+}
+
+function setHeader() {
+  const prompt = document.getElementById("promptText");
+  const trail = document.getElementById("breadcrumbs");
+  if (prompt) prompt.textContent = "Whom would you like to reach out Today?";
+  if (trail) trail.textContent = navStack.map(x => norm(x.Name)).join("  ›  ");
+}
+
+async function fetchReports(node) {
+  const params = new URLSearchParams({
+    action: "reports",
+    userId: norm(node.UserID)
+  });
+  return jsonp(`${APPS_SCRIPT_URL}?${params.toString()}`);
+}
+
+function renderGrid(list) {
+  const grid = document.getElementById("grid");
+  const empty = document.getElementById("empty");
+  grid.innerHTML = "";
+
+  if (!Array.isArray(list) || !list.length) {
+    const advisor = norm(navStack[navStack.length - 1].Name);
+    const userId = norm(navStack[navStack.length - 1].UserID);
+    window.location.href = `advisor-actions.html?name=${encodeURIComponent(advisor)}&userId=${encodeURIComponent(userId)}`;
+    return;
+  }
+
+  empty.style.display = "none";
+
+  list.forEach((person) => {
+    const btn = document.createElement("button");
+    btn.className = "card";
+    btn.textContent = norm(person.Name);
+   btn.addEventListener("click", async () => {
+
+  const role = (person.Role || "").trim().toLowerCase()
+
+  if (role === "advisor") {
+
+    window.location.href =
+    `advisor-actions.html?name=${encodeURIComponent(person.Name)}&userId=${encodeURIComponent(person.UserID)}`
+
+    return
+  }
+
+  navStack.push(person)
+  await renderCurrentLevel()
+
+})
+
+    grid.appendChild(btn);
+  });
+}
+
+async function renderCurrentLevel() {
+  const node = navStack[navStack.length - 1];
+  setHeader();
+  const data = await fetchReports(node);
+  if (!data || !data.ok) {
+    throw new Error((data && data.message) || "Unable to load hierarchy right now.");
+  }
+  renderGrid(data.reports || []);
+}
+
+async function init() {
+  if (APPS_SCRIPT_URL.includes("PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE")) {
+    throw new Error("Please add the Google Apps Script web app URL in the HTML first.");
+  }
+
+  const raw = sessionStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    window.location.href = "sarthi-login-appscript.html";
+    return;
+  }
+
+  currentUser = JSON.parse(raw);
+  navStack = [currentUser];
+  await renderCurrentLevel();
+}
+
+document.getElementById("levelBackBtn").addEventListener("click", async () => {
+  if (navStack.length > 1) {
+    navStack.pop();
+    await renderCurrentLevel();
+  } else {
+    window.location.href = "index.html";
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem(STORAGE_KEY);
+  window.location.href = "sarthi-login-appscript.html";
+});
+
+init().catch((err) => {
+  console.error(err);
+  document.getElementById("grid").innerHTML = "";
+  setEmpty(err.message || "Unable to load hierarchy right now.");
+});
+</script>
+</body>
+</html>
