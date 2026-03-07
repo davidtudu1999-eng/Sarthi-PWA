@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#075E54"/>
+<title>Sarthi Login</title>
+<style>
+:root{--wa:#075E54;--bg:#e5ddd5;--card:#fff;--line:#9cb4aa;--text:#17302b;--btnbg:#dff5ed;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:860px;margin:0 auto;padding:42px 18px 40px;min-height:100vh}
+.bubble{background:var(--card);border:2px solid var(--line);padding:18px 20px;font-size:20px;line-height:1.45;max-width:620px}
+.form{margin-top:54px}
+.input{display:block;width:100%;padding:18px 16px;margin:0 0 34px;border:2px solid var(--line);background:#fff;font-size:22px;color:var(--text);outline:none}
+.input::placeholder{color:#a4afa9}
+.actions{display:flex;justify-content:center;gap:52px;flex-wrap:wrap;margin-top:30px}
+.btn{border:2px solid #7f968d;cursor:pointer;padding:18px 26px;border-radius:16px;font-weight:900;font-size:20px;color:#29423c;background:var(--btnbg);min-width:190px;box-shadow:0 2px 0 rgba(0,0,0,.05)}
+.btn:active{transform:translateY(1px)}
+.error,.info{margin-top:18px;text-align:center;font-size:16px;font-weight:700}
+.error{color:#9b2020}.info{color:#45645d}
+@media (max-width:640px){
+  .wrap{padding-top:30px}
+  .bubble{font-size:18px}
+  .input{font-size:19px;margin-bottom:24px;padding:15px 14px}
+  .actions{gap:18px}
+  .btn{min-width:140px;font-size:18px;padding:15px 22px}
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bubble">
+      <strong>Welcome to Sarthi Module!!</strong><br/><br/>
+      Please enter your login credentials
+    </div>
+
+    <div class="form">
+      <input id="username" class="input" type="text" placeholder="username" autocomplete="username" />
+      <input id="pin" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="pin" autocomplete="current-password" />
+      <div class="actions">
+        <button class="btn" id="submitBtn">Submit</button>
+        <button class="btn" id="backBtn">Back</button>
+      </div>
+      <div id="message" class="error" aria-live="polite"></div>
+    </div>
+  </div>
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+const STORAGE_KEY = "sarthiCurrentUser";
+
+function setMessage(text, isError = true) {
+  const el = document.getElementById("message");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isError ? "#a32323" : "#2d4f45";
+}
+
+function norm(v) { return String(v || "").trim(); }
+function low(v) { return norm(v).toLowerCase(); }
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "sarthiCb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+    const script = document.createElement("script");
+    const sep = url.includes("?") ? "&" : "?";
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("Request timeout"));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+    }
+
+    window[cb] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    script.src = `${url}${sep}callback=${cb}`;
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Network error"));
+    };
+    document.body.appendChild(script);
+  });
+}
+
+async function handleLogin() {
+  const usernameEl = document.getElementById("username");
+  const pinEl = document.getElementById("pin");
+  const submitBtn = document.getElementById("submitBtn");
+
+  const username = low(usernameEl && usernameEl.value);
+  const pin = norm(pinEl && pinEl.value);
+
+  if (APPS_SCRIPT_URL.includes("PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE")) {
+    setMessage("Please add the Google Apps Script web app URL in the HTML first.");
+    return;
+  }
+  if (!username || !pin) {
+    setMessage("Please enter both username and pin.");
+    return;
+  }
+
+  try {
+    if (submitBtn) submitBtn.disabled = true;
+    setMessage("Checking credentials...", false);
+
+    const url = `${APPS_SCRIPT_URL}?action=login&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}`;
+    const data = await jsonp(url);
+
+    if (!data || !data.ok || !data.user) {
+      setMessage((data && data.message) || "Invalid username or pin.");
+      return;
+    }
+
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
+    window.location.href = "sarthi-dashboard-appscript.html";
+  } catch (err) {
+    console.error(err);
+    setMessage("Unable to validate login right now.");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+document.getElementById("submitBtn").addEventListener("click", handleLogin);
+document.getElementById("backBtn").addEventListener("click", () => window.location.href = "index.html");
+document.getElementById("pin").addEventListener("keydown", (e) => { if (e.key === "Enter") handleLogin(); });
+document.getElementById("username").addEventListener("keydown", (e) => { if (e.key === "Enter") handleLogin(); });
+</script>
+</body>
+</html>
