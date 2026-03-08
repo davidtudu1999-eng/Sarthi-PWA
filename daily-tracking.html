@@ -1,0 +1,409 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Tracking</title>
+
+<style>
+body{
+margin:0;
+font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+background:#e5ddd5;
+color:#1f2d2a;
+}
+
+.header{
+position:fixed;
+top:0;
+left:0;
+right:0;
+z-index:3000;
+background:#075E54;
+color:#fff;
+padding:20px;
+font-weight:900;
+font-size:26px;
+}
+
+.page{
+max-width:900px;
+margin:auto;
+padding:110px 18px 40px;
+}
+
+.panel{
+background:rgba(255,255,255,.18);
+padding:25px;
+border-radius:20px;
+box-shadow:none;
+}
+
+.advisor-box{
+width:240px;
+margin:auto;
+margin-bottom:25px;
+background:white;
+border:2px solid #2f3937;
+border-radius:18px;
+text-align:center;
+padding:12px;
+font-weight:700;
+box-shadow:0 1px 0 rgba(0,0,0,.04);
+}
+
+.metric-name{
+margin-top:6px;
+font-size:1.1rem;
+}
+
+.question-box{
+background:white;
+border:2px solid #2f3937;
+min-height:90px;
+padding:18px;
+font-size:1.2rem;
+display:flex;
+align-items:center;
+margin-bottom:25px;
+}
+
+.date-card{
+background:white;
+border:2px solid #2f3937;
+padding:18px;
+margin-bottom:25px;
+}
+
+.date-label{
+display:block;
+font-size:1rem;
+font-weight:700;
+margin-bottom:12px;
+}
+
+.date-input{
+display:block;
+width:100%;
+max-width:100%;
+height:56px;
+border:2px solid #2f3937;
+font-size:1rem;
+padding:0 12px;
+background:#fff;
+box-sizing:border-box;
+}
+
+.bubble-row{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:14px;
+margin-bottom:25px;
+}
+
+.bubble{
+border:2px solid #5b6b58;
+background:#dce8d2;
+border-radius:999px;
+aspect-ratio:1;
+font-size:1.2rem;
+display:flex;
+align-items:center;
+justify-content:center;
+cursor:pointer;
+font-weight:600;
+}
+
+.bubble.active{
+background:#b9d7a7;
+box-shadow:inset 0 0 0 2px #3d5a35;
+}
+
+.manual-input{
+width:100%;
+height:55px;
+border:2px solid #2f3937;
+font-size:1.05rem;
+padding:0 14px;
+margin-bottom:25px;
+}
+
+.btn-row{
+display:flex;
+justify-content:center;
+flex-wrap:wrap;
+gap:18px;
+}
+
+.btn{
+min-width:160px;
+padding:14px 18px;
+border:2px solid #8ea598;
+border-radius:14px;
+background:#d8eee4;
+font-size:1.1rem;
+font-weight:800;
+cursor:pointer;
+box-shadow:0 4px 0 rgba(0,0,0,.08);
+color:#1f2d2a;
+}
+
+.overlay{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.45);
+display:none;
+align-items:center;
+justify-content:center;
+}
+
+.overlay.show{display:flex;}
+
+.modal{
+background:white;
+padding:25px;
+border-radius:18px;
+text-align:center;
+width:90%;
+max-width:420px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">Akash at your Service</div>
+
+<div class="page">
+<div class="panel">
+
+<div class="advisor-box">
+<div id="advisorName">Advisor Name</div>
+<div id="metricName" class="metric-name">Leads</div>
+</div>
+
+<div class="date-card">
+<label class="date-label" for="trackingDate">Tracking Date</label>
+<input type="date" id="trackingDate" class="date-input">
+</div>
+
+<div id="questionBox" class="question-box">1. Leads for the day?</div>
+
+<div id="bubbleRow" class="bubble-row"></div>
+
+<input id="manualInput" class="manual-input" type="number" placeholder="Type number if above 7">
+
+<div class="btn-row">
+<button id="submitBtn" class="btn">Submit</button>
+<button id="backBtn" class="btn">Back</button>
+<button id="advisorListBtn" class="btn">Advisor's List</button>
+</div>
+
+</div>
+</div>
+
+<div id="doneOverlay" class="overlay">
+<div class="modal">
+<h2>Activities Logged In</h2>
+<p>Do you want to see updated status?</p>
+
+<div class="btn-row">
+<button id="yesBtn" class="btn">Yes</button>
+<button id="noBtn" class="btn">No</button>
+</div>
+
+</div>
+</div>
+
+<script>
+const SCRIPT_URL =
+  localStorage.getItem("SCRIPT_URL") ||
+  "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+
+const API_URL =
+  localStorage.getItem("SCRIPT_URL") ||
+  "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+
+const steps = [
+  { key:'leads', title:'Leads', question:'1. Leads for the day?' },
+  { key:'calls', title:'Calls', question:'2. Calls for the day?' },
+  { key:'ms', title:'Meetings Scheduled', question:'3. Meetings Scheduled for the day?' },
+  { key:'md', title:'Meetings Done', question:'4. Meetings done for the day?' },
+  { key:'logins', title:'Logins', question:'5. Logins for the day?' }
+];
+
+const params = new URLSearchParams(window.location.search);
+const advisor = params.get("name") || "Advisor";
+const userName = params.get("userName") || params.get("managerName") || "";
+
+document.getElementById("advisorName").textContent = advisor;
+
+let step = 0;
+let values = {
+  leads:"",
+  calls:"",
+  ms:"",
+  md:"",
+  logins:""
+};
+
+const bubbleRow = document.getElementById("bubbleRow");
+const questionBox = document.getElementById("questionBox");
+const metricName = document.getElementById("metricName");
+const input = document.getElementById("manualInput");
+const overlay = document.getElementById("doneOverlay");
+const trackingDateInput = document.getElementById("trackingDate");
+
+function setDefaultTrackingDate() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const today = `${yyyy}-${mm}-${dd}`;
+  trackingDateInput.max = today;
+  trackingDateInput.value = today;
+}
+
+function renderBubbles(selected) {
+  bubbleRow.innerHTML = "";
+  for (let i = 0; i <= 7; i++) {
+    const b = document.createElement("div");
+    b.className = "bubble";
+    b.textContent = i;
+    if (String(selected) === String(i)) b.classList.add("active");
+    b.onclick = () => {
+      input.value = i;
+      values[steps[step].key] = String(i);
+      render();
+    };
+    bubbleRow.appendChild(b);
+  }
+}
+
+function render() {
+  const s = steps[step];
+  metricName.textContent = s.title;
+  questionBox.textContent = s.question;
+  input.value = values[s.key];
+  renderBubbles(values[s.key]);
+}
+
+input.addEventListener("input", () => {
+  values[steps[step].key] = input.value;
+  renderBubbles(input.value);
+});
+
+function sanitize(v) {
+  if (v === "" || v == null) return 0;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+}
+
+async function postDailyTracking() {
+  const payload = {
+    action: "logDailyTracking",
+    advisorName: advisor,
+    userName: userName,
+    trackingDate: trackingDateInput ? trackingDateInput.value : "",
+    leads: sanitize(values.leads),
+    calls: sanitize(values.calls),
+    meetingScheduled: sanitize(values.ms),
+    meetingDone: sanitize(values.md),
+    logins: sanitize(values.logins)
+  };
+
+  return new Promise((resolve, reject) => {
+    const callbackName = "dtCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+
+    window[callbackName] = function (data) {
+      try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+
+    const params = new URLSearchParams(payload);
+    params.set("callback", callbackName);
+
+    const script = document.createElement("script");
+    script.src = API_URL + "?" + params.toString();
+    script.onerror = function () {
+      try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error("JSONP request failed"));
+    };
+
+    document.body.appendChild(script);
+  });
+}
+
+document.getElementById("submitBtn").onclick = async () => {
+  values[steps[step].key] = String(sanitize(input.value));
+
+  if (trackingDateInput && !trackingDateInput.value) {
+    alert("Please select tracking date.");
+    return;
+  }
+
+  if (trackingDateInput && trackingDateInput.value) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(trackingDateInput.value + "T00:00:00");
+    if (selected > today) {
+      alert("Future date is not allowed.");
+      return;
+    }
+  }
+
+  if (step < steps.length - 1) {
+    step++;
+    render();
+    return;
+  }
+
+  try {
+    const result = await postDailyTracking();
+
+    if (result && result.ok) {
+      overlay.classList.add("show");
+    } else {
+      alert((result && result.message) || "Unable to log daily tracking right now.");
+    }
+  } catch (e) {
+    alert("Unable to log daily tracking right now.");
+  }
+};
+
+document.getElementById("backBtn").onclick = () => {
+  if (step > 0) {
+    step--;
+    render();
+    return;
+  }
+  history.back();
+};
+
+function goAdvisorList() {
+  window.location.href = "sarthi-dashboard-appscript.html";
+}
+
+document.getElementById("advisorListBtn").onclick = goAdvisorList;
+document.getElementById("noBtn").onclick = goAdvisorList;
+
+document.getElementById("yesBtn").onclick = () => {
+  const url = new URL("goal-setting.html", window.location.href);
+  url.searchParams.set("name", advisor);
+  url.searchParams.set("updateActuals", "1");
+  url.searchParams.set("ts", Date.now());
+  if (trackingDateInput && trackingDateInput.value) url.searchParams.set("trackingDate", trackingDateInput.value);
+  if (userName) url.searchParams.set("userName", userName);
+  window.location.href = url.toString();
+};
+
+setDefaultTrackingDate();
+render();
+</script>
+
+</body>
+</html>
