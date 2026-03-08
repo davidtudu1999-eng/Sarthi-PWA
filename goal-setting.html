@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#075E54"/>
+  <title>Goal Setting</title>
+  <style>
+    :root{
+      --wa:#075E54;
+      --bg:#e5ddd5;
+      --card:#ffffff;
+      --btn:#d8eee4;
+      --border:#8ea598;
+      --text:#1f2d2a;
+      --accent:#dca543;
+      --navy:#20323f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .header{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--wa);color:#fff;padding:20px;font-weight:900;font-size:26px}
+    .wrap{max-width:1100px;margin:0 auto;padding:110px 16px 32px}
+    .nameBox{margin:10px auto 18px;background:#fff;border:2px solid #111;border-radius:18px;padding:16px 20px;max-width:260px;text-align:center;font-weight:800;font-size:22px}
+    .panel{background:rgba(255,255,255,.18);padding:18px 12px 24px;border-radius:16px}
+    .card{background:#fff;border:2px solid #777;border-radius:0;padding:14px 12px;margin:14px auto;max-width:980px}
+    label{display:block;font-weight:700;margin-bottom:8px;font-size:17px}
+    input,select{width:100%;padding:14px;border:2px solid #999;border-radius:8px;font-size:16px;background:#fff}
+    .btnRow{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+    .btn{min-width:170px;padding:16px 18px;border:2px solid var(--border);border-radius:14px;background:var(--btn);font-size:18px;font-weight:800;color:var(--text);box-shadow:0 4px 0 rgba(0,0,0,.08);cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+    .hidden{display:none !important}
+    .tableWrap{overflow:auto;margin-top:8px}
+    table{width:100%;border-collapse:collapse;background:#fff;min-width:760px}
+    th,td{border:1px solid #d6d0c8;text-align:center;padding:12px 8px;font-size:18px}
+    thead tr:first-child th{background:var(--accent);color:#fff;font-size:20px;font-weight:900}
+    thead tr:nth-child(2) th{background:#f5ebdc;font-weight:400}
+    .weekHead{background:var(--navy)!important;color:#fff!important;font-weight:800!important;width:130px}
+    tbody td:first-child{background:#eef2f4;font-weight:700}
+    tfoot td{background:var(--accent);font-weight:900}
+    tfoot td:first-child{background:var(--navy);color:#fff}
+    .msg{max-width:980px;margin:14px auto 0;font-size:14px;opacity:.82}
+    @media (max-width:760px){
+      .header{font-size:24px;padding:18px}
+      .wrap{padding:98px 10px 24px}
+      .nameBox{font-size:18px;max-width:240px}
+      .card{padding:12px 10px}
+      .btn{width:100%;max-width:280px;min-width:0}
+      th,td{font-size:16px;padding:10px 6px}
+    }
+  </style>
+</head>
+<body>
+  <div class="header">Akash at your Service</div>
+  <div class="wrap">
+    <div id="advisorName" class="nameBox">Advisor Name</div>
+
+    <section id="inputView" class="panel">
+      <div class="card">
+        <label for="monthlyLeads">1. Enter Monthly Leads</label>
+        <input id="monthlyLeads" type="number" min="1" step="1" placeholder="Enter monthly leads"/>
+      </div>
+      <div class="card">
+        <label for="track">2. Track (Dropdown)</label>
+        <select id="track">
+          <option value="">Select track</option>
+          <option value="A">Track A Advisors (New)</option>
+          <option value="B">Track B Advisors (Intermediate)</option>
+          <option value="C">Track C Advisors (Experienced)</option>
+        </select>
+      </div>
+      <div class="btnRow">
+        <button id="generateBtn" class="btn">Monthly Target</button>
+        <button id="backBtn1" class="btn">Back</button>
+      </div>
+    </section>
+
+    <section id="resultView" class="panel hidden">
+      <div class="tableWrap">
+        <table id="targetsTable">
+          <thead>
+            <tr>
+              <th class="weekHead" rowspan="2">Week</th>
+              <th colspan="5">Monthly Targets</th>
+            </tr>
+            <tr>
+              <th>Leads</th>
+              <th>Calls</th>
+              <th>Meetings Scheduled</th>
+              <th>Meetings</th>
+              <th>Proposal Logins</th>
+            </tr>
+          </thead>
+          <tbody id="targetsBody"></tbody>
+          <tfoot>
+            <tr>
+              <td>30-Day Total</td>
+              <td id="tLeads"></td>
+              <td id="tCalls"></td>
+              <td id="tScheduled"></td>
+              <td id="tMeetings"></td>
+              <td id="tLogins"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="btnRow">
+        <button id="shareBtn" class="btn">Share</button>
+        <button id="backBtn2" class="btn">Back</button>
+        <button id="advisorListBtn" class="btn">Advisor's List</button>
+        <button id="changeBtn" class="btn">Change Targets</button>
+      </div>
+      <div class="msg">This version keeps targets frozen on the same device/browser. To save across devices, connect this page to your Apps Script and the Monthly_Targets tab.</div>
+    </section>
+  </div>
+
+  <script>
+const API_URL = localStorage.getItem("SCRIPT_URL") || "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+
+    const params = new URLSearchParams(window.location.search);
+    const advisorName = params.get('name') || 'Advisor Name';
+    const advisorId = params.get('advisorId') || '';
+    const storageKey = 'goalSetting_' + advisorName;
+
+    const advisorEl = document.getElementById('advisorName');
+    const inputView = document.getElementById('inputView');
+    const resultView = document.getElementById('resultView');
+    const monthlyLeadsEl = document.getElementById('monthlyLeads');
+    const trackEl = document.getElementById('track');
+    const targetsBody = document.getElementById('targetsBody');
+
+    advisorEl.textContent = advisorName;
+
+    function roundParts(total, weights) {
+      const exact = weights.map(w => total * w);
+      const base = exact.map(Math.floor);
+      let remainder = total - base.reduce((a,b)=>a+b,0);
+      const order = exact.map((v,i)=>({i, frac:v-base[i]})).sort((a,b)=>b.frac-a.frac);
+      let idx = 0;
+      while (remainder > 0) {
+        base[order[idx % order.length].i] += 1;
+        remainder -= 1;
+        idx += 1;
+      }
+      return base;
+    }
+
+    function roundHalfUp(n){ return Math.round(n); }
+
+    function computeTargets(track, monthlyLeads){
+      const leads = roundParts(monthlyLeads, [0.30,0.25,0.18,0.15,0.12]);
+      const config = {
+        A: {calls:0.91, sched:0.49, meetings:0.40, logins:0.07},
+        B: {calls:0.91, sched:0.62, meetings:0.50, logins:0.10},
+        C: {calls:0.93, sched:0.70, meetings:0.58, logins:0.18}
+      }[track];
+      const totals = {
+        leads: monthlyLeads,
+        calls: roundHalfUp(monthlyLeads * config.calls),
+        scheduled: roundHalfUp(monthlyLeads * config.sched),
+        meetings: roundHalfUp(monthlyLeads * config.meetings),
+        logins: roundHalfUp(monthlyLeads * config.logins)
+      };
+      const calls = roundParts(totals.calls, [0.30,0.25,0.18,0.15,0.12]);
+      const scheduled = roundParts(totals.scheduled, [0.26,0.24,0.18,0.17,0.15]);
+      const meetings = roundParts(totals.meetings, [0.26,0.24,0.18,0.17,0.15]);
+      const logins = roundParts(totals.logins, [0.15,0.20,0.15,0.23,0.27]);
+      return {
+        track, monthlyLeads, rows: [0,1,2,3,4].map(i => ({
+          week: i+1,
+          leads: leads[i],
+          calls: calls[i],
+          scheduled: scheduled[i],
+          meetings: meetings[i],
+          logins: logins[i]
+        })),
+        totals
+      };
+    }
+
+    function renderTable(data){
+      targetsBody.innerHTML = '';
+      data.rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.week}</td>
+          <td>${row.leads}</td>
+          <td>${row.calls}</td>
+          <td>${row.scheduled}</td>
+          <td>${row.meetings}</td>
+          <td>${row.logins}</td>`;
+        targetsBody.appendChild(tr);
+      });
+      document.getElementById('tLeads').textContent = data.totals.leads;
+      document.getElementById('tCalls').textContent = data.totals.calls;
+      document.getElementById('tScheduled').textContent = data.totals.scheduled;
+      document.getElementById('tMeetings').textContent = data.totals.meetings;
+      document.getElementById('tLogins').textContent = data.totals.logins;
+    }
+
+    function saveLocal(data){ localStorage.setItem(storageKey, JSON.stringify(data)); }
+    function loadLocal(){
+      try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); }
+      catch { return null; }
+    }
+
+    function showInput(){ inputView.classList.remove('hidden'); resultView.classList.add('hidden'); }
+    function showResult(data){ renderTable(data); inputView.classList.add('hidden'); resultView.classList.remove('hidden'); }
+
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      const monthlyLeads = Number(monthlyLeadsEl.value);
+      const track = trackEl.value;
+      if (!monthlyLeads || monthlyLeads < 1) return alert('Please enter Monthly Leads.');
+      if (!track) return alert('Please select Track.');
+      const data = computeTargets(track, monthlyLeads);
+      saveLocal(data);
+      showResult(data);
+    });
+
+    document.getElementById('changeBtn').addEventListener('click', () => {
+      const saved = loadLocal();
+      if (saved) {
+        monthlyLeadsEl.value = saved.monthlyLeads;
+        trackEl.value = saved.track;
+      }
+      showInput();
+    });
+
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+      const text = `Monthly Targets for ${advisorName}`;
+      if (navigator.share) {
+        try { await navigator.share({ title: text, text }); } catch (_) {}
+      } else {
+        alert('Share will be connected next.');
+      }
+    });
+
+    function goAdvisorPage(){
+      const url = new URL('advisor-actions.html', window.location.href);
+      url.searchParams.set('name', advisorName);
+      if (advisorId) url.searchParams.set('advisorId', advisorId);
+      window.location.href = url.toString();
+    }
+
+    document.getElementById('backBtn1').addEventListener('click', goAdvisorPage);
+    document.getElementById('backBtn2').addEventListener('click', goAdvisorPage);
+    document.getElementById('advisorListBtn').addEventListener('click', () => history.back());
+
+    const saved = loadLocal();
+    if (saved) {
+      monthlyLeadsEl.value = saved.monthlyLeads;
+      trackEl.value = saved.track;
+      showResult(saved);
+    } else {
+      showInput();
+    }
+  </script>
+</body>
+</html>
