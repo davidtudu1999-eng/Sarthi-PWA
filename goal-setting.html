@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#075E54"/>
+  <title>Goal Setting</title>
+  <style>
+    :root{
+      --wa:#075E54;
+      --bg:#e5ddd5;
+      --card:#ffffff;
+      --btn:#d8eee4;
+      --border:#8ea598;
+      --text:#1f2d2a;
+      --accent:#dca543;
+      --navy:#20323f;
+      --green:#14853a;
+      --greenLite:#eef8ef;
+      --status:#e7722a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .header{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--wa);color:#fff;padding:20px;font-weight:900;font-size:26px}
+    .wrap{max-width:1320px;margin:0 auto;padding:110px 16px 32px}
+    .nameBox{margin:10px auto 18px;background:#fff;border:2px solid #111;border-radius:18px;padding:16px 20px;max-width:280px;text-align:center;font-weight:800;font-size:22px}
+    .panel{background:rgba(255,255,255,.18);padding:18px 12px 24px;border-radius:16px}
+    .card{background:#fff;border:2px solid #777;padding:14px 12px;margin:14px auto;max-width:980px}
+    label{display:block;font-weight:700;margin-bottom:8px;font-size:17px}
+    input,select{width:100%;padding:14px;border:2px solid #999;border-radius:8px;font-size:16px;background:#fff}
+    .btnRow{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+    .btn{min-width:170px;padding:16px 18px;border:2px solid var(--border);border-radius:14px;background:var(--btn);font-size:18px;font-weight:800;color:var(--text);box-shadow:0 4px 0 rgba(0,0,0,.08);cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+    .hidden{display:none !important}
+    .tableWrap{overflow:auto;margin-top:8px}
+    #shareCard{background:#fff;padding:8px;border-radius:12px}
+    table{width:100%;border-collapse:collapse;background:#fff;min-width:1180px}
+    th,td{border:1px solid #d6d0c8;text-align:center;padding:12px 8px;font-size:18px}
+    thead tr:first-child th{color:#fff;font-size:20px;font-weight:900}
+    .targetsHead{background:var(--accent)}
+    .actualsHead{background:var(--green)}
+    thead tr:nth-child(2) th{font-weight:500;background:#f5ebdc}
+    thead tr:nth-child(2) th.actualCol{background:#eaf7eb}
+    .weekHead{background:var(--navy)!important;color:#fff!important;font-weight:800!important;width:130px}
+    tbody td:first-child{background:#eef2f4;font-weight:700}
+    td.actualCol{background:var(--greenLite)}
+    .statusPill{display:inline-block;padding:10px 12px;border-radius:999px;background:var(--status);color:#fff;font-weight:900;font-size:13px;line-height:1.05;min-width:92px}
+    tfoot td.targetsTotal{background:var(--accent);font-weight:900}
+    tfoot td.actualsTotal{background:var(--green);color:#fff;font-weight:900}
+    tfoot td:first-child{background:var(--navy);color:#fff;font-weight:900}
+    .msg{max-width:980px;margin:14px auto 0;font-size:14px;opacity:.82}
+    @media (max-width:760px){
+      .header{font-size:24px;padding:18px}
+      .wrap{padding:98px 10px 24px}
+      .nameBox{font-size:18px;max-width:240px}
+      .card{padding:12px 10px}
+      .btn{width:100%;max-width:280px;min-width:0}
+      th,td{font-size:15px;padding:10px 6px}
+      .statusPill{min-width:80px;font-size:12px;padding:8px 10px}
+    }
+  </style>
+</head>
+<body>
+  <div class="header">Akash at your Service</div>
+  <div class="wrap">
+    <div id="advisorName" class="nameBox">Advisor Name</div>
+
+    <section id="inputView" class="panel">
+      <div class="card">
+        <label for="monthlyLeads">1. Enter Monthly Leads</label>
+        <input id="monthlyLeads" type="number" min="1" step="1" placeholder="Enter monthly leads"/>
+      </div>
+      <div class="card">
+        <label for="track">2. Track (Dropdown)</label>
+        <select id="track">
+          <option value="">Select track</option>
+          <option value="A">Track A Advisors (New)</option>
+          <option value="B">Track B Advisors (Intermediate)</option>
+          <option value="C">Track C Advisors (Experienced)</option>
+        </select>
+      </div>
+      <div class="btnRow">
+        <button id="generateBtn" class="btn">Monthly Target</button>
+        <button id="backBtn1" class="btn">Back</button>
+      </div>
+    </section>
+
+    <section id="resultView" class="panel hidden">
+      <div class="tableWrap">
+        <div id="shareCard">
+          <div style="font-weight:900;font-size:28px;color:#df8d43;margin:6px 8px 18px;">Monthly Targets vs Actuals - March 2026</div>
+          <table id="targetsTable">
+            <thead>
+              <tr>
+                <th class="weekHead" rowspan="2">Week</th>
+                <th class="targetsHead" colspan="5">Targets</th>
+                <th class="actualsHead" colspan="6">Actuals</th>
+              </tr>
+              <tr>
+                <th>Leads</th>
+                <th>Calls</th>
+                <th>Meeting Scheduled</th>
+                <th>Meetings</th>
+                <th>Proposal Logins</th>
+                <th class="actualCol">Leads</th>
+                <th class="actualCol">Calls</th>
+                <th class="actualCol">Meeting Scheduled</th>
+                <th class="actualCol">Meetings</th>
+                <th class="actualCol">Proposal Logins</th>
+                <th class="actualCol">Status</th>
+              </tr>
+            </thead>
+            <tbody id="targetsBody"></tbody>
+            <tfoot>
+              <tr>
+                <td>30-Day Total</td>
+                <td class="targetsTotal" id="tLeads"></td>
+                <td class="targetsTotal" id="tCalls"></td>
+                <td class="targetsTotal" id="tScheduled"></td>
+                <td class="targetsTotal" id="tMeetings"></td>
+                <td class="targetsTotal" id="tLogins"></td>
+                <td class="actualsTotal" id="aLeads">0</td>
+                <td class="actualsTotal" id="aCalls">0</td>
+                <td class="actualsTotal" id="aScheduled">0</td>
+                <td class="actualsTotal" id="aMeetings">0</td>
+                <td class="actualsTotal" id="aLogins">0</td>
+                <td class="actualsTotal"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="btnRow">
+        <button id="shareBtn" class="btn">Share</button>
+        <button id="backBtn2" class="btn">Back</button>
+        <button id="advisorListBtn" class="btn">Advisor's List</button>
+        <button id="changeBtn" class="btn">Change Targets</button>
+      </div>
+      <div class="msg">Actuals are kept 0 by default here. Later, when Daily Tracking is connected, these actuals can be updated automatically.</div>
+    </section>
+  </div>
+
+  <script>
+const SCRIPT_URL =
+  localStorage.getItem("SCRIPT_URL") ||
+  "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+
+    const API_URL = localStorage.getItem("SCRIPT_URL") || "https://script.google.com/macros/s/AKfycbxZ9Kpu0wpj8ONHE4FTOmeHigxt_wdhh3K97RWXTQ8mqjz9Hl6Er-iXJff-qu62kMtZHw/exec";
+    const params = new URLSearchParams(window.location.search);
+    const advisorName = params.get('name') || 'Advisor Name';
+    const advisorId = params.get('advisorId') || '';
+    const userName = params.get('userName') || params.get('managerName') || '';
+    const shouldRefreshActuals = params.get('updateActuals') === '1';
+    const refreshTs = params.get('ts') || '';
+
+    const advisorEl = document.getElementById('advisorName');
+    const inputView = document.getElementById('inputView');
+    const resultView = document.getElementById('resultView');
+    const monthlyLeadsEl = document.getElementById('monthlyLeads');
+    const trackEl = document.getElementById('track');
+    const targetsBody = document.getElementById('targetsBody');
+
+    let currentData = null;
+
+    advisorEl.textContent = advisorName;
+
+    function roundParts(total, weights) {
+      const exact = weights.map(w => total * w);
+      const base = exact.map(Math.floor);
+      let remainder = total - base.reduce((a,b)=>a+b,0);
+      const order = exact.map((v,i)=>({i, frac:v-base[i]})).sort((a,b)=>b.frac-a.frac);
+      let idx = 0;
+      while (remainder > 0) {
+        base[order[idx % order.length].i] += 1;
+        remainder -= 1;
+        idx += 1;
+      }
+      return base;
+    }
+
+    function roundHalfUp(n){ return Math.round(n); }
+
+    function computeTargets(track, monthlyLeads){
+      const leads = roundParts(monthlyLeads, [0.30,0.25,0.18,0.15,0.12]);
+      const config = {
+        A: {calls:0.91, sched:0.49, meetings:0.40, logins:0.07},
+        B: {calls:0.91, sched:0.62, meetings:0.50, logins:0.10},
+        C: {calls:0.93, sched:0.70, meetings:0.58, logins:0.18}
+      }[track];
+      const totals = {
+        leads: monthlyLeads,
+        calls: roundHalfUp(monthlyLeads * config.calls),
+        scheduled: roundHalfUp(monthlyLeads * config.sched),
+        meetings: roundHalfUp(monthlyLeads * config.meetings),
+        logins: roundHalfUp(monthlyLeads * config.logins)
+      };
+      const calls = roundParts(totals.calls, [0.30,0.25,0.18,0.15,0.12]);
+      const scheduled = roundParts(totals.scheduled, [0.26,0.24,0.18,0.17,0.15]);
+      const meetings = roundParts(totals.meetings, [0.26,0.24,0.18,0.17,0.15]);
+      const logins = roundParts(totals.logins, [0.15,0.20,0.15,0.23,0.27]);
+      return {
+        track, monthlyLeads,
+        rows: [0,1,2,3,4].map(i => ({
+          week: i+1,
+          leads: leads[i],
+          calls: calls[i],
+          scheduled: scheduled[i],
+          meetings: meetings[i],
+          logins: logins[i],
+          actualLeads: 0,
+          actualCalls: 0,
+          actualScheduled: 0,
+          actualMeetings: 0,
+          actualLogins: 0
+        })),
+        actualTotals: { leads:0, calls:0, scheduled:0, meetings:0, logins:0 },
+        totals
+      };
+    }
+
+    function getRowStatus(row) {
+      const targetSum = Number(row.leads||0)+Number(row.calls||0)+Number(row.scheduled||0)+Number(row.meetings||0)+Number(row.logins||0);
+      const actualSum = Number(row.actualLeads||0)+Number(row.actualCalls||0)+Number(row.actualScheduled||0)+Number(row.actualMeetings||0)+Number(row.actualLogins||0);
+      return actualSum >= targetSum && targetSum > 0 ? 'ON TARGET' : 'UNDER TARGET';
+    }
+
+    function normalizeFetchedData(data) {
+      if (!data) return null;
+      const rows = (data.rows || []).map(row => ({
+        week: Number(row.week),
+        leads: Number(row.leads || 0),
+        calls: Number(row.calls || 0),
+        scheduled: Number(row.scheduled || 0),
+        meetings: Number(row.meetings || 0),
+        logins: Number(row.logins || 0),
+        actualLeads: Number(row.actualLeads || 0),
+        actualCalls: Number(row.actualCalls || 0),
+        actualScheduled: Number(row.actualScheduled || 0),
+        actualMeetings: Number(row.actualMeetings || 0),
+        actualLogins: Number(row.actualLogins || 0)
+      }));
+      return {
+        track: data.track || '',
+        monthlyLeads: Number(data.monthlyLeads || 0),
+        rows,
+        totals: {
+          leads: Number(data.totals?.leads || 0),
+          calls: Number(data.totals?.calls || 0),
+          scheduled: Number(data.totals?.scheduled || 0),
+          meetings: Number(data.totals?.meetings || 0),
+          logins: Number(data.totals?.logins || 0)
+        },
+        actualTotals: {
+          leads: Number(data.actualTotals?.leads || 0),
+          calls: Number(data.actualTotals?.calls || 0),
+          scheduled: Number(data.actualTotals?.scheduled || 0),
+          meetings: Number(data.actualTotals?.meetings || 0),
+          logins: Number(data.actualTotals?.logins || 0)
+        }
+      };
+    }
+
+    function renderTable(data){
+      targetsBody.innerHTML = '';
+      (data.rows || []).forEach(row => {
+        const status = getRowStatus(row);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.week}</td>
+          <td>${row.leads}</td>
+          <td>${row.calls}</td>
+          <td>${row.scheduled}</td>
+          <td>${row.meetings}</td>
+          <td>${row.logins}</td>
+          <td class="actualCol">${row.actualLeads ?? 0}</td>
+          <td class="actualCol">${row.actualCalls ?? 0}</td>
+          <td class="actualCol">${row.actualScheduled ?? 0}</td>
+          <td class="actualCol">${row.actualMeetings ?? 0}</td>
+          <td class="actualCol">${row.actualLogins ?? 0}</td>
+          <td class="actualCol"><span class="statusPill">${status}</span></td>`;
+        targetsBody.appendChild(tr);
+      });
+      document.getElementById('tLeads').textContent = data.totals.leads;
+      document.getElementById('tCalls').textContent = data.totals.calls;
+      document.getElementById('tScheduled').textContent = data.totals.scheduled;
+      document.getElementById('tMeetings').textContent = data.totals.meetings;
+      document.getElementById('tLogins').textContent = data.totals.logins;
+      document.getElementById('aLeads').textContent = data.actualTotals?.leads ?? 0;
+      document.getElementById('aCalls').textContent = data.actualTotals?.calls ?? 0;
+      document.getElementById('aScheduled').textContent = data.actualTotals?.scheduled ?? 0;
+      document.getElementById('aMeetings').textContent = data.actualTotals?.meetings ?? 0;
+      document.getElementById('aLogins').textContent = data.actualTotals?.logins ?? 0;
+      currentData = data;
+    }
+
+    function showInput(){
+      inputView.classList.remove('hidden');
+      resultView.classList.add('hidden');
+    }
+
+    function showResult(data){
+      renderTable(data);
+      inputView.classList.add('hidden');
+      resultView.classList.remove('hidden');
+    }
+
+    async function apiCall(action, extra) {
+      const payload = Object.assign({ action }, extra || {});
+      return new Promise((resolve, reject) => {
+        const callbackName = "gsCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+
+        window[callbackName] = function (data) {
+          try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+          if (script.parentNode) script.parentNode.removeChild(script);
+          resolve(data);
+        };
+
+        const params = new URLSearchParams(payload);
+        params.set("callback", callbackName);
+
+        const script = document.createElement('script');
+        script.src = API_URL + "?" + params.toString();
+        script.onerror = function () {
+          try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error('JSONP request failed.'));
+        };
+
+        document.body.appendChild(script);
+      });
+    }
+
+    async function loadSavedTarget() {
+      const result = await apiCall('getMonthlyTarget', { advisorName });
+      if (result.ok && result.found && result.data) {
+        const normalized = normalizeFetchedData(result.data);
+        monthlyLeadsEl.value = normalized.monthlyLeads || '';
+        trackEl.value = normalized.track || '';
+        showResult(normalized);
+        return true;
+      }
+      showInput();
+      return false;
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+      const monthlyLeads = Number(monthlyLeadsEl.value);
+      const track = trackEl.value;
+      if (!monthlyLeads || monthlyLeads < 1) return alert('Please enter Monthly Leads.');
+      if (!track) return alert('Please select Track.');
+
+      const preview = computeTargets(track, monthlyLeads);
+      try {
+        const result = await apiCall('saveGoalSetting', {
+          advisorName,
+          track,
+          monthlyLeads,
+          userName
+        });
+        if (!result.ok) return alert(result.message || 'Unable to save Goal Setting.');
+        const normalized = normalizeFetchedData(result.data || preview);
+        showResult(normalized);
+      } catch (e) {
+        alert('Unable to save Goal Setting right now.');
+      }
+    });
+
+    document.getElementById('changeBtn').addEventListener('click', () => {
+      if (currentData) {
+        monthlyLeadsEl.value = currentData.monthlyLeads || '';
+        trackEl.value = currentData.track || '';
+      }
+      showInput();
+    });
+
+    async function createShareImageBlob(){
+      const data = currentData;
+      if (!data) throw new Error('No data');
+      const colWidths = [92,86,86,132,104,118,86,86,132,104,118,112];
+      const rowHeights = {title: 64, head1: 52, head2: 64, body: 50, foot: 54, bottomPad: 20};
+      const width = colWidths.reduce((a,b)=>a+b,0);
+      const height = rowHeights.title + rowHeights.head1 + rowHeights.head2 + (data.rows.length * rowHeights.body) + rowHeights.foot + rowHeights.bottomPad;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2,2);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,width,height);
+
+      ctx.fillStyle = '#df8d43';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText('Monthly Targets vs Actuals - March 2026', 8, 34);
+
+      let y = rowHeights.title;
+      const xPos = [0];
+      for (let i = 0; i < colWidths.length; i++) xPos.push(xPos[i] + colWidths[i]);
+
+      fillCell(ctx, xPos[0], y, colWidths[0], rowHeights.head1, '#20323f', '#ffffff', 'Week', 16, true);
+      fillCell(ctx, xPos[1], y, colWidths.slice(1,6).reduce((a,b)=>a+b,0), rowHeights.head1, '#dca543', '#ffffff', 'TARGETS', 18, true);
+      fillCell(ctx, xPos[6], y, colWidths.slice(6,12).reduce((a,b)=>a+b,0), rowHeights.head1, '#14853a', '#ffffff', 'ACTUALS', 18, true);
+      y += rowHeights.head1;
+
+      const labels = ['Leads','Calls','Meeting\nScheduled','Meetings','Proposal\nLogins','Leads','Calls','Meeting\nScheduled','Meetings','Proposal\nLogins','Status'];
+      fillCell(ctx, xPos[0], y, colWidths[0], rowHeights.head2, '#20323f', '#ffffff', 'Week', 15, true);
+      for (let i = 1; i <= 11; i++) {
+        const isActual = i >= 6;
+        fillCell(ctx, xPos[i], y, colWidths[i], rowHeights.head2, isActual ? '#eaf7eb' : '#f5ebdc', '#1f2d2a', labels[i-1], 12, false);
+      }
+      y += rowHeights.head2;
+
+      for (const row of data.rows) {
+        const status = getRowStatus(row);
+        fillCell(ctx, xPos[0], y, colWidths[0], rowHeights.body, '#eef2f4', '#1f2d2a', String(row.week), 15, true);
+        const vals = [row.leads,row.calls,row.scheduled,row.meetings,row.logins,row.actualLeads ?? 0,row.actualCalls ?? 0,row.actualScheduled ?? 0,row.actualMeetings ?? 0,row.actualLogins ?? 0];
+        for (let i = 1; i <= 10; i++) {
+          fillCell(ctx, xPos[i], y, colWidths[i], rowHeights.body, i >= 6 ? '#eef8ef' : '#ffffff', '#1f2d2a', String(vals[i-1]), 14, false);
+        }
+        fillCell(ctx, xPos[11], y, colWidths[11], rowHeights.body, '#eef8ef', '#1f2d2a', '', 14, false);
+        const pillW=82, pillH=28, px=xPos[11] + (colWidths[11]-pillW)/2, py=y + (rowHeights.body-pillH)/2;
+        ctx.fillStyle='#e7722a';
+        roundRect(ctx,px,py,pillW,pillH,14,true,false);
+        ctx.fillStyle='#ffffff';
+        drawCenteredText(ctx, status, xPos[11], y, colWidths[11], rowHeights.body, 10, true);
+        y += rowHeights.body;
+      }
+
+      fillCell(ctx, xPos[0], y, colWidths[0], rowHeights.foot, '#20323f', '#ffffff', '30-Day\nTotal', 14, true);
+      const targetTotals = [data.totals.leads, data.totals.calls, data.totals.scheduled, data.totals.meetings, data.totals.logins];
+      const actualTotals = [data.actualTotals?.leads ?? 0, data.actualTotals?.calls ?? 0, data.actualTotals?.scheduled ?? 0, data.actualTotals?.meetings ?? 0, data.actualTotals?.logins ?? 0];
+      for (let i = 1; i <= 5; i++) {
+        fillCell(ctx, xPos[i], y, colWidths[i], rowHeights.foot, '#dca543', '#1f2d2a', String(targetTotals[i-1]), 15, true);
+      }
+      for (let i = 6; i <= 10; i++) {
+        fillCell(ctx, xPos[i], y, colWidths[i], rowHeights.foot, '#14853a', '#ffffff', String(actualTotals[i-6]), 15, true);
+      }
+      fillCell(ctx, xPos[11], y, colWidths[11], rowHeights.foot, '#14853a', '#ffffff', '', 14, true);
+
+      return await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    function fillCell(ctx, x, y, w, h, bg, fg, text, size, bold){
+      ctx.fillStyle = bg;
+      ctx.fillRect(x,y,w,h);
+      ctx.strokeStyle = '#d6d0c8';
+      ctx.strokeRect(x,y,w,h);
+      ctx.fillStyle = fg;
+      drawCenteredText(ctx, text, x, y, w, h, size, bold);
+    }
+
+    function drawCenteredText(ctx, text, x, y, w, h, size, bold){
+      const lines = String(text).split(/\n/).filter(Boolean);
+      ctx.font = `${bold?'bold ':''}${size}px Arial`;
+      const lineHeight = size + 2;
+      const startY = y + (h - (lines.length * lineHeight))/2 + size;
+      lines.forEach((line,i)=>{
+        const m = ctx.measureText(line);
+        ctx.fillText(line, x + (w - m.width)/2, startY + i*lineHeight - 2);
+      });
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+      try{
+        const blob = await createShareImageBlob();
+        const file = new File([blob], `${advisorName}-monthly-targets.png`, {type:'image/png'});
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+          await navigator.share({ files:[file], title:`Monthly Targets - ${advisorName}` });
+        } else {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `${advisorName}-monthly-targets.png`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          alert('PNG downloaded because direct image sharing is not supported on this device/browser.');
+        }
+      } catch (e) {
+        alert('Unable to share right now.');
+      }
+    });
+
+    function goAdvisorPage(){
+      const url = new URL('advisor-actions.html', window.location.href);
+      url.searchParams.set('name', advisorName);
+      if (advisorId) url.searchParams.set('advisorId', advisorId);
+      if (userName) url.searchParams.set('userName', userName);
+      window.location.href = url.toString();
+    }
+
+    document.getElementById('backBtn1').addEventListener('click', goAdvisorPage);
+    document.getElementById('backBtn2').addEventListener('click', goAdvisorPage);
+    document.getElementById('advisorListBtn').addEventListener('click', () => {
+      window.location.href = 'sarthi-dashboard-appscript.html';
+    });
+
+    loadSavedTarget().then(found => {
+      if (!found) {
+        if (shouldRefreshActuals) {
+          alert('No saved monthly targets found for this advisor yet.');
+        }
+        showInput();
+      }
+    });
+  </script>
+</body>
+</html>
